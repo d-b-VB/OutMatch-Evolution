@@ -5,6 +5,8 @@ export const MATERIAL_VALUE = { P: 100, A: 105, C: 110 };
 const key = ([q, r]) => `${q},${r}`;
 const same = (a, b) => a[0] === b[0] && a[1] === b[1];
 const enemyOf = side => side === "R" ? "B" : "R";
+const BASE = { R: [-3, 0], B: [3, 0] };
+const UNIT_TYPES = ["P", "A", "C"];
 
 export const BOARD_CELLS = [];
 for (let q = -BOARD_RADIUS; q <= BOARD_RADIUS; q += 1) {
@@ -36,15 +38,90 @@ function emptySideMetrics() {
   };
 }
 
-export function createState({ units, round = 1, turn = "R" }) {
+export function createState({ units, round = 1, turn = "R", pending = { R: null, B: null } }) {
   return {
     units: structuredClone(units),
     round,
     turn,
+    pending: { ...pending },
+    nextUnitId: units.reduce((maximum, unit) => Math.max(maximum, unit.id), 0) + 1,
     captured: { R: 0, B: 0 },
     metrics: { R: emptySideMetrics(), B: emptySideMetrics() },
     trace: []
   };
+}
+
+export function hexDistance(a, b) {
+  return Math.max(
+    Math.abs(a[0] - b[0]),
+    Math.abs(a[1] - b[1]),
+    Math.abs((-a[0] - a[1]) - (-b[0] - b[1]))
+  );
+}
+
+export function recruitScores(state, side, genome) {
+  const genes = genome.genes;
+  const friendly = { P: 0, A: 0, C: 0 };
+  const enemy = { P: 0, A: 0, C: 0 };
+  for (const unit of state.units) {
+    (unit.side === side ? friendly : enemy)[unit.typ] += 1;
+  }
+  return Object.fromEntries(UNIT_TYPES.map(type => {
+    let score = genes.recruitBase[type];
+    for (const enemyType of UNIT_TYPES) {
+      score += genes.recruitResponse[`${type}>${enemyType}`] * enemy[enemyType];
+      score += 0.7 * (
+        genes.desiredRatio[`${type}>${enemyType}`] * enemy[enemyType] - friendly[type]
+      );
+    }
+    return [type, score];
+  }));
+}
+
+export function chooseRecruit(state, side, genome) {
+  const scores = recruitScores(state, side, genome);
+  return [...UNIT_TYPES].sort((a, b) => scores[b] - scores[a])[0];
+}
+
+export function deploymentSpots(state, side) {
+  const occupied = occupancy(state);
+  return neighbours.get(key(BASE[side])).filter(position => !occupied.has(key(position)));
+}
+
+export function chooseDeployment(state, side, genome) {
+  if (!state.pending[side]) return null;
+  const spots = deploymentSpots(state, side);
+  if (spots.length === 0) return null;
+  const genes = genome.genes.deploy;
+  const friendly = state.units.filter(unit => unit.side === side);
+  const enemy = state.units.filter(unit => unit.side !== side);
+  const score = position => {
+    const support = friendly.filter(unit => hexDistance(position, unit.pos) === 1).length;
+    const exposure = enemy.filter(unit => hexDistance(position, unit.pos) === 1).length;
+    return -hexDistance(position, [0, 0]) * genes.center
+      - hexDistance(position, BASE[enemyOf(side)]) * genes.enemyBase
+      + support * genes.support
+      + exposure * genes.exposure;
+  };
+  return spots
+    .map((position, index) => ({ position, index, score: score(position) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0].position;
+}
+
+export function deployPending(state, side, genome) {
+  const position = chooseDeployment(state, side, genome);
+  if (!position) return null;
+  const deployed = {
+    id: state.nextUnitId,
+    side,
+    typ: state.pending[side],
+    pos: [...position],
+    active: false
+  };
+  state.nextUnitId += 1;
+  state.units.push(deployed);
+  state.pending[side] = null;
+  return deployed;
 }
 
 export function initialState() {

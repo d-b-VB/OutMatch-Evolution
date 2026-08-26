@@ -1,6 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyAction, archerTargets, createState, initialState, legalActions, legalMoves, unitById } from "../../src/engine/board.js";
+import {
+  applyAction,
+  archerTargets,
+  chooseDeployment,
+  chooseRecruit,
+  createState,
+  deployPending,
+  deploymentSpots,
+  initialState,
+  legalActions,
+  legalMoves,
+  recruitScores,
+  unitById
+} from "../../src/engine/board.js";
 
 const adjacentState = () => createState({ units: [
   { id: 1, side: "R", typ: "P", pos: [0, 0], active: true },
@@ -145,4 +158,73 @@ test("cavalry may enter but cannot move through an enemy pike zone", () => {
   const moves = legalMoves(state, unitById(state, 1));
   assert.ok(moves.some(position => position[0] === -1 && position[1] === 0));
   assert.equal(moves.some(position => position[0] === 0 && position[1] === 0), false);
+});
+
+const evaluatorGenome = ({
+  recruitBase = { P: 0, A: 0, C: 0 },
+  recruitResponse = {},
+  desiredRatio = {},
+  deploy = { center: 0, enemyBase: 0, support: 0, exposure: 0 }
+} = {}) => ({
+  genes: {
+    recruitBase,
+    recruitResponse: Object.fromEntries(["P", "A", "C"].flatMap(type =>
+      ["P", "A", "C"].map(enemy => [`${type}>${enemy}`, recruitResponse[`${type}>${enemy}`] ?? 0])
+    )),
+    desiredRatio: Object.fromEntries(["P", "A", "C"].flatMap(type =>
+      ["P", "A", "C"].map(enemy => [`${type}>${enemy}`, desiredRatio[`${type}>${enemy}`] ?? 0])
+    )),
+    deploy
+  }
+});
+
+test("recruit scoring preserves base, response, desired-ratio, and own-count terms", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-1, 0], active: true },
+    { id: 2, side: "B", typ: "A", pos: [1, 0], active: true }
+  ] });
+  const genome = evaluatorGenome({
+    recruitBase: { P: 2, A: 1, C: 0 },
+    recruitResponse: { "P>A": 3 },
+    desiredRatio: { "P>A": 4 }
+  });
+  const scores = recruitScores(state, "R", genome);
+  assert.ok(Math.abs(scores.P - 5.7) < 1e-12);
+  assert.deepEqual({ A: scores.A, C: scores.C }, { A: 1, C: 0 });
+  assert.equal(chooseRecruit(state, "R", genome), "P");
+});
+
+test("recruitment ties retain canonical P, A, C ordering", () => {
+  assert.equal(chooseRecruit(initialState(), "R", evaluatorGenome()), "P");
+});
+
+test("deployment exposes only empty cells adjacent to the side base", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: true }
+  ], pending: { R: "A", B: null } });
+  assert.deepEqual(deploymentSpots(state, "R"), [[-2, -1], [-3, 1]]);
+});
+
+test("deployment choice uses genome scoring and deploys an inactive reinforcement", () => {
+  const state = createState({ units: [
+    { id: 7, side: "R", typ: "P", pos: [-2, 0], active: true }
+  ], pending: { R: "C", B: null } });
+  const genome = evaluatorGenome({
+    deploy: { center: 1, enemyBase: 0, support: 10, exposure: 0 }
+  });
+  assert.deepEqual(chooseDeployment(state, "R", genome), [-2, -1]);
+  const deployed = deployPending(state, "R", genome);
+  assert.deepEqual(deployed, { id: 8, side: "R", typ: "C", pos: [-2, -1], active: false });
+  assert.equal(state.pending.R, null);
+  assert.equal(state.nextUnitId, 9);
+});
+
+test("deployment leaves a pending reinforcement intact when the base is blocked", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: true },
+    { id: 2, side: "R", typ: "A", pos: [-2, -1], active: true },
+    { id: 3, side: "R", typ: "C", pos: [-3, 1], active: true }
+  ], pending: { R: "P", B: null } });
+  assert.equal(deployPending(state, "R", evaluatorGenome()), null);
+  assert.equal(state.pending.R, "P");
 });
