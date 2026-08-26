@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+# User-downloaded evolution data should not normally be committed
+*.omgen
+*.omrun

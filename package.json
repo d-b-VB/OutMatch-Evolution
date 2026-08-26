@@ -1,0 +1,12 @@
+{
+  "name": "outmatch-reach-evolution",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:unit": "node --test test/engine/board.test.js",
+    "test:golden": "node --test test/engine/golden.test.js",
+    "verify:golden": "node scripts/verify-golden.mjs"
+  }
+}
