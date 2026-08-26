@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:unit": "node --test test/engine/board.test.js",
+    "test:golden": "node --test test/engine/golden.test.js",
+    "verify:golden": "node scripts/verify-golden.mjs"
   }
 }

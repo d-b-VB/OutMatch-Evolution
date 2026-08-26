@@ -2,16 +2,30 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyAction,
+  actionIncrement,
   archerTargets,
+  beginSideTurn,
   chooseDeployment,
+  chooseAction,
   chooseRecruit,
+  commitRecruitment,
   createState,
   deployPending,
   deploymentSpots,
+  endSideTurn,
+  featureScore,
+  gameResult,
+  immediateCaptures,
   initialState,
   legalActions,
   legalMoves,
+  lookahead,
+  orderedCandidateActions,
+  playSideTurn,
+  planTurn,
   recruitScores,
+  runGame,
+  stateHash,
   unitById
 } from "../../src/engine/board.js";
 
@@ -75,6 +89,7 @@ test("poke credits attacker, victim, material, poke, and trace instrumentation",
   applyAction(state, { kind: "poke", unitId: 1, targetId: 2 });
   assert.equal(state.captured.R, 105);
   assert.deepEqual(state.metrics.R, {
+    trained: { P: 0, A: 0, C: 0 },
     pokeActions: 1,
     pokeKills: 1,
     killsByAttacker: { P: 1, A: 0, C: 0 },
@@ -227,4 +242,286 @@ test("deployment leaves a pending reinforcement intact when the base is blocked"
   ], pending: { R: "P", B: null } });
   assert.equal(deployPending(state, "R", evaluatorGenome()), null);
   assert.equal(state.pending.R, "P");
+});
+
+test("beginning a side turn activates existing units before deploying an inactive reinforcement", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: false },
+    { id: 2, side: "B", typ: "A", pos: [2, 0], active: false }
+  ], pending: { R: "C", B: null } });
+  const deployed = beginSideTurn(state, "R", evaluatorGenome());
+  assert.equal(unitById(state, 1).active, true);
+  assert.equal(unitById(state, 2).active, false);
+  assert.equal(deployed.active, false);
+  assert.equal(state.turn, "R");
+});
+
+test("odd-round recruitment commits the genome choice and prevents replacement", () => {
+  const state = initialState();
+  const genome = evaluatorGenome({ recruitBase: { P: 0, A: 4, C: 0 } });
+  assert.equal(commitRecruitment(state, "R", genome), "A");
+  assert.equal(state.pending.R, "A");
+  assert.throws(() => commitRecruitment(state, "R", genome, "C"), /already pending/);
+  state.pending.R = null;
+  assert.throws(() => commitRecruitment(state, "R", genome, "X"), /Unknown unit type/);
+  state.round = 2;
+  assert.throws(() => commitRecruitment(state, "R", genome), /odd rounds/);
+});
+
+test("side-turn completion requires every existing unit to activate", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: true },
+    { id: 2, side: "B", typ: "P", pos: [2, 0], active: false }
+  ] });
+  assert.throws(() => endSideTurn(state, "R"), /All units must activate/);
+  applyAction(state, { kind: "hold", unitId: 1 });
+  assert.deepEqual(endSideTurn(state, "R"), { round: 1, turn: "B" });
+  assert.deepEqual(endSideTurn(state, "B"), { round: 2, turn: "R" });
+});
+
+test("natural elimination produces Reach raw scores", () => {
+  const early = createState({
+    units: [{ id: 1, side: "R", typ: "P", pos: [0, 0], active: false }],
+    round: 1
+  });
+  assert.deepEqual(gameResult(early), {
+    status: "complete",
+    outcome: "elimination",
+    winner: "R",
+    round: 1,
+    rawScore: { R: 1.5, B: -0.5 }
+  });
+  early.round = 20;
+  assert.deepEqual(gameResult(early).rawScore, { R: 1, B: 0 });
+});
+
+test("round cap is a draw without natural elimination", () => {
+  const state = createState({
+    units: [
+      { id: 1, side: "R", typ: "P", pos: [-1, 0], active: false },
+      { id: 2, side: "B", typ: "P", pos: [1, 0], active: false }
+    ],
+    round: 21
+  });
+  assert.deepEqual(gameResult(state), {
+    status: "complete",
+    outcome: "draw",
+    winner: null,
+    round: 20,
+    rawScore: { R: 0, B: 0 }
+  });
+});
+
+test("immediate capture pressure preserves the canonical movement-based calculation", () => {
+  const state = adjacentState();
+  assert.equal(immediateCaptures(state, "R"), 1);
+  assert.equal(immediateCaptures(state, "B"), 1);
+});
+
+test("candidate ordering treats poke as a tactical capture", () => {
+  const state = adjacentState();
+  const genome = { genes: { search: { breadth: 8, exploration: 0, ordering: 1 } } };
+  const candidates = orderedCandidateActions(state, "R", genome);
+  const pokeIndex = candidates.findIndex(action => action.kind === "poke");
+  const holdIndex = candidates.findIndex(action => action.kind === "hold");
+  assert.ok(pokeIndex >= 0);
+  assert.ok(holdIndex === -1 || pokeIndex < holdIndex);
+});
+
+test("candidate breadth is clamped to eight", () => {
+  const state = initialState();
+  const genome = { genes: { search: { breadth: 100, exploration: 0, ordering: 1 } } };
+  assert.equal(orderedCandidateActions(state, "R", genome).length, 8);
+});
+
+test("candidate exploration replaces tail slots with low-ranked actions", () => {
+  const state = adjacentState();
+  const baseline = { genes: { search: { breadth: 3, exploration: 0, ordering: 1 } } };
+  const exploring = { genes: { search: { breadth: 3, exploration: 1 / 3, ordering: 1 } } };
+  assert.equal(orderedCandidateActions(state, "R", baseline).some(action => action.kind === "hold"), false);
+  assert.equal(orderedCandidateActions(state, "R", exploring).at(-1).kind, "hold");
+});
+
+test("state hashing is stable across unit array order and sensitive to activation", () => {
+  const first = adjacentState();
+  const second = structuredClone(first);
+  second.units.reverse();
+  assert.equal(stateHash(first), stateHash(second));
+  second.units.find(unit => unit.id === 1).active = false;
+  assert.notEqual(stateHash(first), stateHash(second));
+});
+
+function tacticalGenome(overrides = {}) {
+  const cell = {};
+  for (const relationship of ["friend", "enemy"]) {
+    for (const radius of [1, 2]) {
+      for (let count = 0; count <= 6; count += 1) cell[`${relationship}${radius}_${count}`] = 0;
+    }
+  }
+  return { genes: {
+    captureTarget: { P: 0, A: 0, C: 0 },
+    attacker: { P: 0, A: 0, C: 0 },
+    action: {
+      progress: 0,
+      support: 0,
+      dispersion: 0,
+      force: 0,
+      exposure: 0,
+      center: 0,
+      mobility: 0,
+      enemyBase: 0,
+      hold: 0
+    },
+    cell,
+    pos36: {},
+    sequence: {
+      secondAction: 0,
+      sameUnitCombo: 0,
+      coordinatedCombo: 0,
+      doubleCapture: 0
+    },
+    search: { breadth: 8, exploration: 0, ordering: 1 },
+    ...overrides
+  } };
+}
+
+test("poke receives capture-target and pikeman-attacker evaluation", () => {
+  const before = adjacentState();
+  const after = structuredClone(before);
+  const action = { kind: "poke", unitId: 1, targetId: 2 };
+  applyAction(after, action);
+  const genome = tacticalGenome({
+    captureTarget: { P: 0, A: 11, C: 0 },
+    attacker: { P: 7, A: 0, C: 0 }
+  });
+  assert.equal(featureScore(before, after, "R", genome, action), 18);
+});
+
+test("feature evaluation preserves movement progress, center, and hold genes", () => {
+  const before = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: true },
+    { id: 2, side: "B", typ: "P", pos: [2, 0], active: true }
+  ] });
+  const moved = structuredClone(before);
+  const moveAction = { kind: "move", unitId: 1, destination: [-1, 0] };
+  applyAction(moved, moveAction);
+  const genome = tacticalGenome({
+    action: {
+      progress: 2,
+      support: 0,
+      dispersion: 0,
+      force: 0,
+      exposure: 0,
+      center: 3,
+      mobility: 0,
+      enemyBase: 5,
+      hold: 13
+    }
+  });
+  assert.equal(featureScore(before, moved, "R", genome, moveAction), 10);
+
+  const held = structuredClone(before);
+  const holdAction = { kind: "hold", unitId: 1 };
+  applyAction(held, holdAction);
+  assert.equal(featureScore(before, held, "R", genome, holdAction), 13);
+});
+
+test("action increments apply same-unit and coordinated sequence genes", () => {
+  const before = adjacentState();
+  const after = structuredClone(before);
+  const action = { kind: "poke", unitId: 1, targetId: 2 };
+  applyAction(after, action);
+  const genome = tacticalGenome({
+    sequence: {
+      secondAction: 2,
+      sameUnitCombo: 3,
+      coordinatedCombo: 5,
+      doubleCapture: 7
+    }
+  });
+  assert.equal(actionIncrement(before, after, "R", genome, action, [{ kind: "hold", unitId: 1 }]), 12);
+  assert.equal(actionIncrement(before, after, "R", genome, action, [{ kind: "hold", unitId: 99 }]), 14);
+});
+
+test("depth-three lookahead selects a capture-valued Reach poke", () => {
+  const state = adjacentState();
+  const genome = tacticalGenome({
+    captureTarget: { P: 0, A: 100, C: 0 },
+    attacker: { P: 10, A: 0, C: 0 },
+    action: {
+      progress: -100,
+      support: 0,
+      dispersion: 0,
+      force: 0,
+      exposure: 0,
+      center: 0,
+      mobility: 0,
+      enemyBase: 0,
+      hold: 0
+    }
+  });
+  const result = lookahead(state, "R", genome, 3);
+  assert.equal(result.score, 110);
+  assert.equal(result.actions.length, 1);
+  assert.equal(result.actions[0].kind, "poke");
+  assert.equal(result.state.units.some(unit => unit.id === 2), false);
+});
+
+test("action selection is deterministic and does not mutate its input", () => {
+  const state = adjacentState();
+  const original = structuredClone(state);
+  const genome = tacticalGenome({ captureTarget: { P: 0, A: 50, C: 0 } });
+  assert.deepEqual(
+    chooseAction(state, "R", genome, 3),
+    chooseAction(state, "R", genome, 3)
+  );
+  assert.deepEqual(state, original);
+});
+
+test("turn planning replans until every friendly unit has activated", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "P", pos: [-2, 0], active: true },
+    { id: 2, side: "R", typ: "A", pos: [-3, 1], active: true },
+    { id: 3, side: "B", typ: "P", pos: [2, 0], active: true }
+  ] });
+  const result = planTurn(state, "R", tacticalGenome(), 3);
+  assert.equal(result.actions.length, 2);
+  assert.equal(result.state.units.some(unit => unit.side === "R" && unit.active), false);
+  assert.equal(state.units.every(unit => unit.active), true);
+});
+
+test("action selection returns null when a side has no active units", () => {
+  const state = adjacentState();
+  unitById(state, 1).active = false;
+  assert.equal(chooseAction(state, "R", tacticalGenome()), null);
+});
+
+function completeGenome(tacticalOverrides = {}) {
+  const tactical = tacticalGenome(tacticalOverrides);
+  const evaluator = evaluatorGenome();
+  return { genes: { ...tactical.genes, ...evaluator.genes } };
+}
+
+test("side runner recruits, executes actions, and stops immediately on elimination", () => {
+  const state = adjacentState();
+  const genome = completeGenome({
+    captureTarget: { P: 0, A: 100, C: 0 },
+    attacker: { P: 10, A: 0, C: 0 }
+  });
+  const turn = playSideTurn(state, "R", genome, 1);
+  assert.equal(turn.recruited, "A");
+  assert.equal(turn.actions.length, 1);
+  assert.equal(turn.result.status, "complete");
+  assert.equal(turn.result.winner, "R");
+  assert.deepEqual(state.metrics.R.trained, { P: 0, A: 1, C: 0 });
+});
+
+test("headless game runner is deterministic and emits a compact ledger", () => {
+  const genome = completeGenome();
+  const first = runGame(genome, genome, { depth: 1 });
+  const second = runGame(genome, genome, { depth: 1 });
+  assert.deepEqual(first.ledger, second.ledger);
+  assert.ok(["elimination", "draw"].includes(first.ledger.outcome));
+  assert.equal(first.ledger.engineRulesVersion, "reach-v1");
+  assert.equal(first.state.trace.every(entry => entry.kind === "poke"), true);
 });
