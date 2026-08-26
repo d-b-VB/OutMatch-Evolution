@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyAction, createState, initialState, legalActions, legalMoves, unitById } from "../../src/engine/board.js";
+import { applyAction, archerTargets, createState, initialState, legalActions, legalMoves, unitById } from "../../src/engine/board.js";
 
 const adjacentState = () => createState({ units: [
   { id: 1, side: "R", typ: "P", pos: [0, 0], active: true },
@@ -82,6 +82,59 @@ test("archer movement remains limited to empty adjacent cells", () => {
     { id: 2, side: "B", typ: "P", pos: [1, 0], active: true }
   ] });
   assert.equal(legalMoves(state, unitById(state, 1)).some(position => position[0] === 1 && position[1] === 0), false);
+});
+
+test("archer can shoot an adjacent enemy without moving", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "A", pos: [0, 0], active: true },
+    { id: 2, side: "B", typ: "C", pos: [1, 0], active: true }
+  ] });
+  assert.deepEqual(archerTargets(state, unitById(state, 1)).map(unit => unit.id), [2]);
+  assert.ok(legalActions(state, 1).some(action => action.kind === "shoot" && action.targetId === 2));
+  applyAction(state, { kind: "shoot", unitId: 1, targetId: 2 });
+  assert.equal(unitById(state, 2), undefined);
+  assert.deepEqual(unitById(state, 1).pos, [0, 0]);
+  assert.equal(state.metrics.R.killsByAttacker.A, 1);
+});
+
+test("archer can move and then shoot from its new position", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "A", pos: [-1, 0], active: true },
+    { id: 2, side: "B", typ: "P", pos: [1, 0], active: true }
+  ] });
+  const action = { kind: "moveshoot", unitId: 1, destination: [0, 0], targetId: 2 };
+  assert.ok(legalActions(state, 1).some(candidate =>
+    candidate.kind === action.kind && candidate.targetId === action.targetId
+      && candidate.destination[0] === 0 && candidate.destination[1] === 0
+  ));
+  applyAction(state, action);
+  assert.deepEqual(unitById(state, 1).pos, [0, 0]);
+  assert.equal(unitById(state, 2), undefined);
+  assert.equal(unitById(state, 1).active, false);
+});
+
+test("archer can shoot first and move into the newly emptied cell", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "A", pos: [0, 0], active: true },
+    { id: 2, side: "B", typ: "P", pos: [1, 0], active: true }
+  ] });
+  const action = { kind: "shootmove", unitId: 1, targetId: 2, destination: [1, 0] };
+  assert.ok(legalActions(state, 1).some(candidate =>
+    candidate.kind === action.kind && candidate.targetId === action.targetId
+      && candidate.destination[0] === 1 && candidate.destination[1] === 0
+  ));
+  applyAction(state, action);
+  assert.deepEqual(unitById(state, 1).pos, [1, 0]);
+  assert.equal(unitById(state, 2), undefined);
+});
+
+test("archer cannot shoot a non-adjacent target", () => {
+  const state = createState({ units: [
+    { id: 1, side: "R", typ: "A", pos: [0, 0], active: true },
+    { id: 2, side: "B", typ: "P", pos: [2, 0], active: true }
+  ] });
+  assert.equal(legalActions(state, 1).some(action => action.kind === "shoot"), false);
+  assert.throws(() => applyAction(state, { kind: "shoot", unitId: 1, targetId: 2 }), /Illegal action/);
 });
 
 test("cavalry may enter but cannot move through an enemy pike zone", () => {

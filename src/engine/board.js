@@ -105,12 +105,52 @@ export function legalMoves(state, unit) {
   });
 }
 
+export function archerTargets(state, unit) {
+  if (unit.typ !== "A") return [];
+  const occupied = occupancy(state);
+  return neighbours
+    .get(key(unit.pos))
+    .map(position => occupied.get(key(position)))
+    .filter(target => target?.side === enemyOf(unit.side));
+}
+
+function cloneForActionGeneration(state) {
+  return structuredClone(state);
+}
+
+function removeUnit(state, unitId) {
+  state.units = state.units.filter(unit => unit.id !== unitId);
+}
+
 export function legalActions(state, unitId) {
   const unit = unitById(state, unitId);
   if (!unit?.active) return [];
   const actions = [{ kind: "hold", unitId }];
-  for (const destination of legalMoves(state, unit)) {
-    actions.push({ kind: "move", unitId, destination });
+  if (unit.typ === "A") {
+    for (const target of archerTargets(state, unit)) {
+      actions.push({ kind: "shoot", unitId, targetId: target.id });
+    }
+    for (const destination of legalMoves(state, unit)) {
+      actions.push({ kind: "move", unitId, destination });
+      const movedState = cloneForActionGeneration(state);
+      const movedArcher = unitById(movedState, unitId);
+      movedArcher.pos = [...destination];
+      for (const target of archerTargets(movedState, movedArcher)) {
+        actions.push({ kind: "moveshoot", unitId, destination, targetId: target.id });
+      }
+    }
+    for (const target of archerTargets(state, unit)) {
+      const shotState = cloneForActionGeneration(state);
+      removeUnit(shotState, target.id);
+      const shotArcher = unitById(shotState, unitId);
+      for (const destination of legalMoves(shotState, shotArcher)) {
+        actions.push({ kind: "shootmove", unitId, targetId: target.id, destination });
+      }
+    }
+  } else {
+    for (const destination of legalMoves(state, unit)) {
+      actions.push({ kind: "move", unitId, destination });
+    }
   }
   if (unit.typ === "P") {
     const occupied = occupancy(state);
@@ -128,7 +168,9 @@ function actionIsLegal(state, action) {
   return legalActions(state, action.unitId).some(candidate =>
     candidate.kind === action.kind
     && candidate.targetId === action.targetId
-    && (candidate.destination === undefined || same(candidate.destination, action.destination))
+    && (candidate.destination === undefined
+      ? action.destination === undefined
+      : action.destination !== undefined && same(candidate.destination, action.destination))
   );
 }
 
@@ -139,15 +181,34 @@ function creditKill(state, attacker, victim) {
   state.units = state.units.filter(unit => unit.id !== victim.id);
 }
 
+function shoot(state, attacker, targetId) {
+  const victim = unitById(state, targetId);
+  creditKill(state, attacker, victim);
+  return victim;
+}
+
+function move(state, attacker, destination) {
+  const victim = state.units.find(unit =>
+    unit.side !== attacker.side && same(unit.pos, destination)
+  );
+  if (victim) creditKill(state, attacker, victim);
+  attacker.pos = [...destination];
+  return victim;
+}
+
 export function applyAction(state, action) {
   if (!actionIsLegal(state, action)) throw new Error("Illegal action");
   const attacker = unitById(state, action.unitId);
   if (action.kind === "move") {
-    const victim = state.units.find(unit =>
-      unit.side !== attacker.side && same(unit.pos, action.destination)
-    );
-    if (victim) creditKill(state, attacker, victim);
-    attacker.pos = [...action.destination];
+    move(state, attacker, action.destination);
+  } else if (action.kind === "shoot") {
+    shoot(state, attacker, action.targetId);
+  } else if (action.kind === "moveshoot") {
+    move(state, attacker, action.destination);
+    shoot(state, attacker, action.targetId);
+  } else if (action.kind === "shootmove") {
+    shoot(state, attacker, action.targetId);
+    move(state, attacker, action.destination);
   } else if (action.kind === "poke") {
     const victim = unitById(state, action.targetId);
     const trace = {
