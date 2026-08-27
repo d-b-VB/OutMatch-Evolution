@@ -8,6 +8,7 @@
     "test:unit": "node --test test/engine/board.test.js",
     "test:golden": "node --test test/engine/golden.test.js",
     "verify:step3": "node --test test/evolution/*.test.js",
+    "verify:step4": "node --test test/persistence/*.test.js",
     "verify:golden": "node scripts/verify-golden.mjs"
   }
 }
