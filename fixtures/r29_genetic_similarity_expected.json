@@ -1,0 +1,351 @@
+{
+  "schema": "outmatch-reach-genetic-similarity-matrix-v1",
+  "generation": "ReachR29",
+  "matrix": {
+    "horse_lords": {
+      "horse_lords": 0.7848633600760854,
+      "pike_lords": 0.6253655277298551,
+      "archer_lords": 0.6382618273851856,
+      "horse_hunters": 0.6983717222857116,
+      "pike_hunters": 0.6258337233224996,
+      "archer_hunters": 0.6462144381751171,
+      "generalists": 0.6617586667370379
+    },
+    "pike_lords": {
+      "horse_lords": 0.6253655277298551,
+      "pike_lords": 0.7821477302772714,
+      "archer_lords": 0.6426838841382392,
+      "horse_hunters": 0.6427282439985157,
+      "pike_hunters": 0.6444605723462836,
+      "archer_hunters": 0.6414055535463865,
+      "generalists": 0.6289568563397876
+    },
+    "archer_lords": {
+      "horse_lords": 0.6382618273851856,
+      "pike_lords": 0.6426838841382392,
+      "archer_lords": 0.744923972104774,
+      "horse_hunters": 0.6572462598123412,
+      "pike_hunters": 0.7307266734321973,
+      "archer_hunters": 0.7234152128550257,
+      "generalists": 0.669368358970431
+    },
+    "horse_hunters": {
+      "horse_lords": 0.6983717222857116,
+      "pike_lords": 0.6427282439985157,
+      "archer_lords": 0.6572462598123412,
+      "horse_hunters": 0.8246975341898253,
+      "pike_hunters": 0.653705263118958,
+      "archer_hunters": 0.6592180549969815,
+      "generalists": 0.6914251068826986
+    },
+    "pike_hunters": {
+      "horse_lords": 0.6258337233224996,
+      "pike_lords": 0.6444605723462836,
+      "archer_lords": 0.7307266734321973,
+      "horse_hunters": 0.653705263118958,
+      "pike_hunters": 0.8038714439893112,
+      "archer_hunters": 0.7158841299211556,
+      "generalists": 0.6653302886086262
+    },
+    "archer_hunters": {
+      "horse_lords": 0.6462144381751171,
+      "pike_lords": 0.6414055535463865,
+      "archer_lords": 0.7234152128550257,
+      "horse_hunters": 0.6592180549969815,
+      "pike_hunters": 0.7158841299211556,
+      "archer_hunters": 0.7691281796647921,
+      "generalists": 0.6776845558971087
+    },
+    "generalists": {
+      "horse_lords": 0.6617586667370379,
+      "pike_lords": 0.6289568563397876,
+      "archer_lords": 0.669368358970431,
+      "horse_hunters": 0.6914251068826986,
+      "pike_hunters": 0.6653302886086262,
+      "archer_hunters": 0.6776845558971087,
+      "generalists": 0.6926068770352631
+    }
+  },
+  "pairStats": [
+    {
+      "type": "within",
+      "A": "horse_lords",
+      "B": "horse_lords",
+      "n_pairs": 1176,
+      "min": 0.42982137255982994,
+      "median": 0.8166094869892464,
+      "mean": 0.7848633600760854,
+      "max": 0.9785183630647903
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "pike_lords",
+      "n_pairs": 2401,
+      "min": 0.3756112893816517,
+      "median": 0.6440819497360597,
+      "mean": 0.6253655277298551,
+      "max": 0.729711315034767
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "archer_lords",
+      "n_pairs": 2401,
+      "min": 0.4187986085367171,
+      "median": 0.6521020904708642,
+      "mean": 0.6382618273851856,
+      "max": 0.7231919729888485
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "horse_hunters",
+      "n_pairs": 2401,
+      "min": 0.44330993593647144,
+      "median": 0.7116157351273265,
+      "mean": 0.6983717222857116,
+      "max": 0.7993337036604177
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "pike_hunters",
+      "n_pairs": 2401,
+      "min": 0.4244708597718391,
+      "median": 0.6412343711060726,
+      "mean": 0.6258337233224996,
+      "max": 0.7171180075743881
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "archer_hunters",
+      "n_pairs": 2401,
+      "min": 0.40185018652836313,
+      "median": 0.6625895834099736,
+      "mean": 0.6462144381751171,
+      "max": 0.7231983261012979
+    },
+    {
+      "type": "between",
+      "A": "horse_lords",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.40171549424616065,
+      "median": 0.683441232471914,
+      "mean": 0.6617586667370379,
+      "max": 0.8270473374159473
+    },
+    {
+      "type": "within",
+      "A": "pike_lords",
+      "B": "pike_lords",
+      "n_pairs": 1176,
+      "min": 0.4237094193657826,
+      "median": 0.8212315828123276,
+      "mean": 0.7821477302772714,
+      "max": 0.9938587010324657
+    },
+    {
+      "type": "between",
+      "A": "pike_lords",
+      "B": "archer_lords",
+      "n_pairs": 2401,
+      "min": 0.3959364466314703,
+      "median": 0.6572564802547832,
+      "mean": 0.6426838841382392,
+      "max": 0.7567455689495816
+    },
+    {
+      "type": "between",
+      "A": "pike_lords",
+      "B": "horse_hunters",
+      "n_pairs": 2401,
+      "min": 0.4310867995953602,
+      "median": 0.654019557509261,
+      "mean": 0.6427282439985157,
+      "max": 0.7307995653419386
+    },
+    {
+      "type": "between",
+      "A": "pike_lords",
+      "B": "pike_hunters",
+      "n_pairs": 2401,
+      "min": 0.42563853258906076,
+      "median": 0.6622679980524774,
+      "mean": 0.6444605723462836,
+      "max": 0.75195005162035
+    },
+    {
+      "type": "between",
+      "A": "pike_lords",
+      "B": "archer_hunters",
+      "n_pairs": 2401,
+      "min": 0.3745588404871398,
+      "median": 0.657042701216248,
+      "mean": 0.6414055535463865,
+      "max": 0.7551146306311384
+    },
+    {
+      "type": "between",
+      "A": "pike_lords",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.3769865668286963,
+      "median": 0.6492767891465802,
+      "mean": 0.6289568563397876,
+      "max": 0.7640614683192383
+    },
+    {
+      "type": "within",
+      "A": "archer_lords",
+      "B": "archer_lords",
+      "n_pairs": 1176,
+      "min": 0.38744714041874856,
+      "median": 0.7566304042890504,
+      "mean": 0.744923972104774,
+      "max": 0.9944095878716691
+    },
+    {
+      "type": "between",
+      "A": "archer_lords",
+      "B": "horse_hunters",
+      "n_pairs": 2401,
+      "min": 0.4200460961171341,
+      "median": 0.6641293415681303,
+      "mean": 0.6572462598123412,
+      "max": 0.7496189684987592
+    },
+    {
+      "type": "between",
+      "A": "archer_lords",
+      "B": "pike_hunters",
+      "n_pairs": 2401,
+      "min": 0.42415164149366763,
+      "median": 0.7467068541733327,
+      "mean": 0.7307266734321973,
+      "max": 0.9557942637483025
+    },
+    {
+      "type": "between",
+      "A": "archer_lords",
+      "B": "archer_hunters",
+      "n_pairs": 2401,
+      "min": 0.3956471248986606,
+      "median": 0.7375762737999106,
+      "mean": 0.7234152128550257,
+      "max": 0.889952208972589
+    },
+    {
+      "type": "between",
+      "A": "archer_lords",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.3972743557986212,
+      "median": 0.6778629314168174,
+      "mean": 0.669368358970431,
+      "max": 0.9747861448511211
+    },
+    {
+      "type": "within",
+      "A": "horse_hunters",
+      "B": "horse_hunters",
+      "n_pairs": 1176,
+      "min": 0.6476338046754434,
+      "median": 0.8287683058194912,
+      "mean": 0.8246975341898253,
+      "max": 0.9838504788932527
+    },
+    {
+      "type": "between",
+      "A": "horse_hunters",
+      "B": "pike_hunters",
+      "n_pairs": 2401,
+      "min": 0.4781128260845048,
+      "median": 0.6645678879832964,
+      "mean": 0.653705263118958,
+      "max": 0.740894964498841
+    },
+    {
+      "type": "between",
+      "A": "horse_hunters",
+      "B": "archer_hunters",
+      "n_pairs": 2401,
+      "min": 0.4326168394263544,
+      "median": 0.6686668163556754,
+      "mean": 0.6592180549969815,
+      "max": 0.7480356288034947
+    },
+    {
+      "type": "between",
+      "A": "horse_hunters",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.4011553056010708,
+      "median": 0.7092332779782586,
+      "mean": 0.6914251068826986,
+      "max": 0.8326505027096441
+    },
+    {
+      "type": "within",
+      "A": "pike_hunters",
+      "B": "pike_hunters",
+      "n_pairs": 1176,
+      "min": 0.5218981810943023,
+      "median": 0.8331508372523722,
+      "mean": 0.8038714439893112,
+      "max": 0.9887160605323905
+    },
+    {
+      "type": "between",
+      "A": "pike_hunters",
+      "B": "archer_hunters",
+      "n_pairs": 2401,
+      "min": 0.4054286889288702,
+      "median": 0.7362844081753092,
+      "mean": 0.7158841299211556,
+      "max": 0.8604018244066204
+    },
+    {
+      "type": "between",
+      "A": "pike_hunters",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.3931592919664185,
+      "median": 0.6731291321676187,
+      "mean": 0.6653302886086262,
+      "max": 0.8951735132684556
+    },
+    {
+      "type": "within",
+      "A": "archer_hunters",
+      "B": "archer_hunters",
+      "n_pairs": 1176,
+      "min": 0.45449009572474725,
+      "median": 0.7878090579550923,
+      "mean": 0.7691281796647921,
+      "max": 0.9960407888458203
+    },
+    {
+      "type": "between",
+      "A": "archer_hunters",
+      "B": "generalists",
+      "n_pairs": 2401,
+      "min": 0.3754762623816191,
+      "median": 0.6884807279122206,
+      "mean": 0.6776845558971087,
+      "max": 0.9230190888033857
+    },
+    {
+      "type": "within",
+      "A": "generalists",
+      "B": "generalists",
+      "n_pairs": 1176,
+      "min": 0.3963600220482579,
+      "median": 0.714894071243205,
+      "mean": 0.6926068770352631,
+      "max": 0.9592747793301719
+    }
+  ]
+}
