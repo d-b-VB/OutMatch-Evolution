@@ -135,6 +135,7 @@ export function validateRunProgressRecord(record) {
   if (!PROGRESS_PHASES.includes(record.phase)) throw new Error(`Progress record has unknown phase ${record.phase}`);
   validateGameRows(record.schedule, "Progress schedule");
   validateGameRows(record.partialLedger, "Progress ledger");
+  if (record.completedLedger !== undefined) validateGameRows(record.completedLedger, "Completed progress ledger");
   if (!Number.isSafeInteger(record.cursor) || record.cursor < 0 || record.cursor > record.schedule.length) {
     throw new Error("Progress cursor is outside its schedule");
   }

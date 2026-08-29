@@ -281,12 +281,19 @@ async function deleteIndexedRecords(transaction, storeName, runId) {
 export async function deleteRunData(database, runId) {
   requireId(runId, "Run ID");
   const stores = [STORE_NAMES.runs, STORE_NAMES.generations, STORE_NAMES.ledgers,
-    STORE_NAMES.progress, STORE_NAMES.replays];
+    STORE_NAMES.progress, STORE_NAMES.replays, STORE_NAMES.settings];
   return withTransaction(database, stores, "readwrite", async transaction => {
     await deleteIndexedRecords(transaction, STORE_NAMES.generations, runId);
     await deleteIndexedRecords(transaction, STORE_NAMES.ledgers, runId);
     await deleteIndexedRecords(transaction, STORE_NAMES.replays, runId);
     await requestResult(transaction.objectStore(STORE_NAMES.progress).delete(runId));
     await requestResult(transaction.objectStore(STORE_NAMES.runs).delete(runId));
+    const settingsStore = transaction.objectStore(STORE_NAMES.settings);
+    const settings = await requestResult(settingsStore.get("application"));
+    if (settings?.selectedRunId === runId) {
+      const updatedSettings = { ...settings, selectedRunId: null, selectedGeneration: null };
+      validateSettingsRecord(updatedSettings);
+      await requestResult(settingsStore.put(updatedSettings));
+    }
   });
 }

@@ -35,8 +35,7 @@ function createStore(database, name, options, indexes = []) {
   for (const index of indexes) store.createIndex(index.name, index.keyPath, index.options);
 }
 
-/** Create the version-one object stores during an IndexedDB upgrade transaction. */
-export function upgradeDatabase(database) {
+function upgradeFrom0To1(database) {
   createStore(database, STORE_NAMES.runs, { keyPath: "runId" }, [
     { name: "createdAt", keyPath: "createdAt", options: { unique: false } }
   ]);
@@ -53,6 +52,21 @@ export function upgradeDatabase(database) {
     { name: "runId", keyPath: "runId", options: { unique: false } },
     { name: "runGeneration", keyPath: ["runId", "generation"], options: { unique: false } }
   ]);
+}
+
+const DATABASE_MIGRATIONS = Object.freeze([upgradeFrom0To1]);
+
+/** Apply every required schema migration in order inside the upgrade transaction. */
+export function upgradeDatabase(database, transaction, oldVersion = 0, newVersion = DATABASE_VERSION) {
+  if (!Number.isSafeInteger(oldVersion) || oldVersion < 0 || oldVersion > DATABASE_VERSION) {
+    throw new Error(`Unsupported IndexedDB source version ${oldVersion}`);
+  }
+  if (newVersion !== null && newVersion !== DATABASE_VERSION) {
+    throw new Error(`Unsupported IndexedDB target version ${newVersion}`);
+  }
+  for (let version = oldVersion; version < DATABASE_VERSION; version += 1) {
+    DATABASE_MIGRATIONS[version](database, transaction);
+  }
 }
 
 export class PersistenceDatabase {
@@ -91,7 +105,9 @@ export function openPersistenceDatabase({
   return new Promise((resolve, reject) => {
     const request = factory.open(name, version);
     let settled = false;
-    listen(request, "upgradeneeded", () => upgradeDatabase(request.result));
+    listen(request, "upgradeneeded", event => upgradeDatabase(
+      request.result, request.transaction, event.oldVersion ?? 0, event.newVersion ?? version
+    ));
     listen(request, "blocked", () => {
       if (settled) return;
       settled = true;

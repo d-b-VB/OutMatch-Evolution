@@ -4,7 +4,8 @@ import {
   openPersistenceDatabase,
   requestResult,
   resolveIndexedDBFactory,
-  transactionDone
+  transactionDone,
+  upgradeDatabase
 } from "../../src/persistence/database.js";
 import { DATABASE_NAME, DATABASE_VERSION, STORE_NAMES } from "../../src/persistence/schema.js";
 
@@ -57,7 +58,8 @@ class FakeFactory {
         return;
       }
       request.result = this.database;
-      request.emit("upgradeneeded");
+      request.transaction = { objectStore: name => this.database.stores.get(name) };
+      request.emit("upgradeneeded", { oldVersion: 0, newVersion: DATABASE_VERSION });
       request.emit("success");
     });
     return request;
@@ -73,6 +75,15 @@ test("injectable IndexedDB factory opens version one and creates every store and
   assert.deepEqual(connection.transaction([STORE_NAMES.runs], "readwrite"), {
     names: [STORE_NAMES.runs], mode: "readwrite"
   });
+});
+
+test("database migrations validate version boundaries and skip completed versions", () => {
+  const database = new FakeDatabase();
+  upgradeDatabase(database, {}, 0, DATABASE_VERSION);
+  assert.deepEqual([...database.stores.keys()], Object.values(STORE_NAMES));
+  assert.doesNotThrow(() => upgradeDatabase(database, {}, DATABASE_VERSION, DATABASE_VERSION));
+  assert.throws(() => upgradeDatabase(database, {}, DATABASE_VERSION + 1, DATABASE_VERSION), /source version/);
+  assert.throws(() => upgradeDatabase(database, {}, 0, DATABASE_VERSION + 1), /target version/);
 });
 
 test("opening rejects unavailable, failed, and blocked IndexedDB factories", async () => {

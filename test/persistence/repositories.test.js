@@ -400,6 +400,7 @@ test("run cleanup removes owned artifacts without affecting another run", async 
   await new ProgressRepository(database).save(progress("run-one"));
   await new ReplayRepository(database).save(replay("run-one", "replay-one"));
   await new ReplayRepository(database).save(replay("run-two", "replay-two"));
+  await new SettingsRepository(database).save(settings("run-one"));
   await deleteRunData(database, "run-one");
   assert.equal(await new RunRepository(database).get("run-one"), undefined);
   assert.equal((await new RunRepository(database).list()).length, 1);
@@ -407,4 +408,6 @@ test("run cleanup removes owned artifacts without affecting another run", async 
   assert.equal(database.data[STORE_NAMES.generations].size, 0);
   assert.equal(database.data[STORE_NAMES.ledgers].size, 0);
   assert.equal(database.data[STORE_NAMES.progress].size, 0);
+  assert.equal((await new SettingsRepository(database).get()).selectedRunId, null);
+  assert.equal((await new SettingsRepository(database).get()).selectedGeneration, null);
 });
