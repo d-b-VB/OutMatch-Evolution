@@ -1,0 +1,904 @@
+{
+  "schema": "outmatch-reach-mutation-ranges-v1",
+  "source": "reference/history/OutMatch_Seven_Ecology_Founders_G0_v2.json",
+  "rule": "Per locus, mutation and full wildcard sampling use uniform continuous draws from expandedMin..expandedMax. Expanded interval is the original G0 source range expanded to 3x total width: [sourceMin-sourceRange, sourceMax+sourceRange].",
+  "locusCount": 112,
+  "ranges": {
+    "action.center": {
+      "sourceMin": -7.181971284411217,
+      "sourceMax": 28.49569942008073,
+      "sourceRange": 35.677670704491945,
+      "expandedMin": -42.859641988903164,
+      "expandedMax": 64.17337012457267,
+      "expandedRange": 107.03301211347583
+    },
+    "action.dispersion": {
+      "sourceMin": -43.26825927382217,
+      "sourceMax": 48.73782622337682,
+      "sourceRange": 92.006085497199,
+      "expandedMin": -135.27434477102116,
+      "expandedMax": 140.7439117205758,
+      "expandedRange": 276.01825649159696
+    },
+    "action.enemyBase": {
+      "sourceMin": -25.02305294621139,
+      "sourceMax": 42.38935950217473,
+      "sourceRange": 67.41241244838612,
+      "expandedMin": -92.4354653945975,
+      "expandedMax": 109.80177195056085,
+      "expandedRange": 202.23723734515835
+    },
+    "action.exposure": {
+      "sourceMin": -24.61600912648322,
+      "sourceMax": 7.549633054140056,
+      "sourceRange": 32.16564218062328,
+      "expandedMin": -56.7816513071065,
+      "expandedMax": 39.71527523476334,
+      "expandedRange": 96.49692654186984
+    },
+    "action.force": {
+      "sourceMin": -42.6763351850943,
+      "sourceMax": 1.978589241514662,
+      "sourceRange": 44.654924426608964,
+      "expandedMin": -87.33125961170326,
+      "expandedMax": 46.633513668123626,
+      "expandedRange": 133.9647732798269
+    },
+    "action.hold": {
+      "sourceMin": -65.3599347930581,
+      "sourceMax": 32.31623038093501,
+      "sourceRange": 97.67616517399311,
+      "expandedMin": -163.0360999670512,
+      "expandedMax": 129.99239555492812,
+      "expandedRange": 293.0284955219793
+    },
+    "action.mobility": {
+      "sourceMin": -36.76233897951593,
+      "sourceMax": 58.872164752560074,
+      "sourceRange": 95.63450373207601,
+      "expandedMin": -132.39684271159194,
+      "expandedMax": 154.50666848463607,
+      "expandedRange": 286.903511196228
+    },
+    "action.progress": {
+      "sourceMin": -20.424252006243147,
+      "sourceMax": 20.54232687721256,
+      "sourceRange": 40.96657888345571,
+      "expandedMin": -61.39083088969886,
+      "expandedMax": 61.50890576066827,
+      "expandedRange": 122.89973665036713
+    },
+    "action.repetition": {
+      "sourceMin": -12.8781810559586,
+      "sourceMax": 12.136039431300631,
+      "sourceRange": 25.01422048725923,
+      "expandedMin": -37.89240154321783,
+      "expandedMax": 37.15025991855987,
+      "expandedRange": 75.0426614617777
+    },
+    "action.support": {
+      "sourceMin": 2.3605964644997988,
+      "sourceMax": 38.744000781192646,
+      "sourceRange": 36.38340431669285,
+      "expandedMin": -34.02280785219305,
+      "expandedMax": 75.12740509788549,
+      "expandedRange": 109.15021295007853
+    },
+    "attacker.A": {
+      "sourceMin": -79.73966238443307,
+      "sourceMax": 98.72365830900347,
+      "sourceRange": 178.46332069343654,
+      "expandedMin": -258.2029830778696,
+      "expandedMax": 277.18697900244,
+      "expandedRange": 535.3899620803096
+    },
+    "attacker.C": {
+      "sourceMin": -19.740239333199458,
+      "sourceMax": 17.322822287437035,
+      "sourceRange": 37.06306162063649,
+      "expandedMin": -56.803300953835944,
+      "expandedMax": 54.385883908073524,
+      "expandedRange": 111.18918486190947
+    },
+    "attacker.P": {
+      "sourceMin": -55.061557589827856,
+      "sourceMax": 108.05261255195082,
+      "sourceRange": 163.1141701417787,
+      "expandedMin": -218.17572773160654,
+      "expandedMax": 271.1667826937295,
+      "expandedRange": 489.34251042533606
+    },
+    "captureTarget.A": {
+      "sourceMin": -153.1941208425782,
+      "sourceMax": 441.23718710172403,
+      "sourceRange": 594.4313079443023,
+      "expandedMin": -747.6254287868805,
+      "expandedMax": 1035.6684950460262,
+      "expandedRange": 1783.2939238329068
+    },
+    "captureTarget.C": {
+      "sourceMin": 23.462979039552778,
+      "sourceMax": 388.4539628453881,
+      "sourceRange": 364.9909838058353,
+      "expandedMin": -341.52800476628255,
+      "expandedMax": 753.4449466512235,
+      "expandedRange": 1094.972951417506
+    },
+    "captureTarget.P": {
+      "sourceMin": -33.46025823056041,
+      "sourceMax": 440.6411014936449,
+      "sourceRange": 474.1013597242053,
+      "expandedMin": -507.5616179547656,
+      "expandedMax": 914.7424612178502,
+      "expandedRange": 1422.3040791726157
+    },
+    "cell.enemy1_0": {
+      "sourceMin": -0.01351397844141733,
+      "sourceMax": 15.613216940391045,
+      "sourceRange": 15.626730918832461,
+      "expandedMin": -15.640244897273876,
+      "expandedMax": 31.239947859223506,
+      "expandedRange": 46.88019275649738
+    },
+    "cell.enemy1_1": {
+      "sourceMin": -43.44904382921884,
+      "sourceMax": 43.473927590399896,
+      "sourceRange": 86.92297141961873,
+      "expandedMin": -130.37201524883756,
+      "expandedMax": 130.39689901001861,
+      "expandedRange": 260.76891425885617
+    },
+    "cell.enemy1_2": {
+      "sourceMin": -41.647495053631836,
+      "sourceMax": 39.912564140378024,
+      "sourceRange": 81.56005919400985,
+      "expandedMin": -123.20755424764168,
+      "expandedMax": 121.47262333438788,
+      "expandedRange": 244.68017758202956
+    },
+    "cell.enemy1_3": {
+      "sourceMin": -33.12933953502843,
+      "sourceMax": 16.755336751712797,
+      "sourceRange": 49.884676286741225,
+      "expandedMin": -83.01401582176965,
+      "expandedMax": 66.64001303845401,
+      "expandedRange": 149.65402886022366
+    },
+    "cell.enemy1_4": {
+      "sourceMin": -9.007563430577914,
+      "sourceMax": 6.161208778947328,
+      "sourceRange": 15.168772209525242,
+      "expandedMin": -24.176335640103154,
+      "expandedMax": 21.32998098847257,
+      "expandedRange": 45.506316628575725
+    },
+    "cell.enemy1_5": {
+      "sourceMin": 7.535739372204081,
+      "sourceMax": 23.04155844854158,
+      "sourceRange": 15.505819076337499,
+      "expandedMin": -7.970079704133417,
+      "expandedMax": 38.547377524879074,
+      "expandedRange": 46.51745722901249
+    },
+    "cell.enemy1_6": {
+      "sourceMin": -38.43742284828241,
+      "sourceMax": 36.449623741419,
+      "sourceRange": 74.88704658970141,
+      "expandedMin": -113.32446943798382,
+      "expandedMax": 111.33667033112042,
+      "expandedRange": 224.66113976910424
+    },
+    "cell.enemy2_0": {
+      "sourceMin": -3.3449515034359383,
+      "sourceMax": 29.853841658610868,
+      "sourceRange": 33.198793162046805,
+      "expandedMin": -36.54374466548275,
+      "expandedMax": 63.05263482065767,
+      "expandedRange": 99.59637948614042
+    },
+    "cell.enemy2_1": {
+      "sourceMin": -8.86509080566184,
+      "sourceMax": 17.451067411622525,
+      "sourceRange": 26.316158217284364,
+      "expandedMin": -35.181249022946204,
+      "expandedMax": 43.767225628906886,
+      "expandedRange": 78.94847465185309
+    },
+    "cell.enemy2_2": {
+      "sourceMin": -12.635972916857217,
+      "sourceMax": 3.2900913437209383,
+      "sourceRange": 15.926064260578155,
+      "expandedMin": -28.56203717743537,
+      "expandedMax": 19.21615560429909,
+      "expandedRange": 47.77819278173446
+    },
+    "cell.enemy2_3": {
+      "sourceMin": -32.807520213865075,
+      "sourceMax": 45.4619493411095,
+      "sourceRange": 78.26946955497458,
+      "expandedMin": -111.07698976883964,
+      "expandedMax": 123.73141889608408,
+      "expandedRange": 234.80840866492372
+    },
+    "cell.enemy2_4": {
+      "sourceMin": -3.916594539515825,
+      "sourceMax": 15.847330169682298,
+      "sourceRange": 19.763924709198122,
+      "expandedMin": -23.680519248713946,
+      "expandedMax": 35.611254878880416,
+      "expandedRange": 59.291774127594365
+    },
+    "cell.enemy2_5": {
+      "sourceMin": -26.202043535427787,
+      "sourceMax": 23.94223750932572,
+      "sourceRange": 50.14428104475351,
+      "expandedMin": -76.3463245801813,
+      "expandedMax": 74.08651855407923,
+      "expandedRange": 150.43284313426054
+    },
+    "cell.enemy2_6": {
+      "sourceMin": -19.181305461364122,
+      "sourceMax": 26.603836567959753,
+      "sourceRange": 45.78514202932388,
+      "expandedMin": -64.966447490688,
+      "expandedMax": 72.38897859728364,
+      "expandedRange": 137.35542608797164
+    },
+    "cell.friend1_0": {
+      "sourceMin": -13.406963246287354,
+      "sourceMax": 24.358862592999987,
+      "sourceRange": 37.765825839287345,
+      "expandedMin": -51.1727890855747,
+      "expandedMax": 62.124688432287336,
+      "expandedRange": 113.29747751786203
+    },
+    "cell.friend1_1": {
+      "sourceMin": -86.94373393701095,
+      "sourceMax": 103.62485900076575,
+      "sourceRange": 190.5685929377767,
+      "expandedMin": -277.5123268747877,
+      "expandedMax": 294.1934519385425,
+      "expandedRange": 571.7057788133302
+    },
+    "cell.friend1_2": {
+      "sourceMin": -40.16588483734463,
+      "sourceMax": 34.791523603531864,
+      "sourceRange": 74.95740844087649,
+      "expandedMin": -115.12329327822113,
+      "expandedMax": 109.74893204440835,
+      "expandedRange": 224.87222532262948
+    },
+    "cell.friend1_3": {
+      "sourceMin": -24.076358986569968,
+      "sourceMax": 14.9342143340222,
+      "sourceRange": 39.01057332059217,
+      "expandedMin": -63.086932307162144,
+      "expandedMax": 53.94478765461437,
+      "expandedRange": 117.03171996177652
+    },
+    "cell.friend1_4": {
+      "sourceMin": -22.375123132425443,
+      "sourceMax": 22.124709514686423,
+      "sourceRange": 44.499832647111866,
+      "expandedMin": -66.8749557795373,
+      "expandedMax": 66.62454216179829,
+      "expandedRange": 133.4994979413356
+    },
+    "cell.friend1_5": {
+      "sourceMin": -116.97379355841676,
+      "sourceMax": 97.31129381861639,
+      "sourceRange": 214.28508737703316,
+      "expandedMin": -331.25888093544995,
+      "expandedMax": 311.59638119564954,
+      "expandedRange": 642.8552621310995
+    },
+    "cell.friend1_6": {
+      "sourceMin": -36.22693254551991,
+      "sourceMax": 26.232971055098318,
+      "sourceRange": 62.459903600618226,
+      "expandedMin": -98.68683614613813,
+      "expandedMax": 88.69287465571655,
+      "expandedRange": 187.37971080185469
+    },
+    "cell.friend2_0": {
+      "sourceMin": -23.795571867214562,
+      "sourceMax": 15.333942770163617,
+      "sourceRange": 39.12951463737818,
+      "expandedMin": -62.92508650459274,
+      "expandedMax": 54.463457407541796,
+      "expandedRange": 117.38854391213454
+    },
+    "cell.friend2_1": {
+      "sourceMin": -13.171980145017969,
+      "sourceMax": 19.89911315003684,
+      "sourceRange": 33.07109329505481,
+      "expandedMin": -46.24307344007278,
+      "expandedMax": 52.97020644509165,
+      "expandedRange": 99.21327988516443
+    },
+    "cell.friend2_2": {
+      "sourceMin": -30.926060390398128,
+      "sourceMax": 16.59923952093285,
+      "sourceRange": 47.525299911330976,
+      "expandedMin": -78.4513603017291,
+      "expandedMax": 64.12453943226382,
+      "expandedRange": 142.5758997339929
+    },
+    "cell.friend2_3": {
+      "sourceMin": -7.633500609536284,
+      "sourceMax": 12.976789808263941,
+      "sourceRange": 20.610290417800226,
+      "expandedMin": -28.243791027336506,
+      "expandedMax": 33.58708022606417,
+      "expandedRange": 61.83087125340067
+    },
+    "cell.friend2_4": {
+      "sourceMin": -28.431092797489086,
+      "sourceMax": 32.14695685734832,
+      "sourceRange": 60.57804965483741,
+      "expandedMin": -89.0091424523265,
+      "expandedMax": 92.72500651218573,
+      "expandedRange": 181.73414896451223
+    },
+    "cell.friend2_5": {
+      "sourceMin": -49.98228572017299,
+      "sourceMax": 107.32932297821364,
+      "sourceRange": 157.31160869838664,
+      "expandedMin": -207.29389441855963,
+      "expandedMax": 264.6409316766003,
+      "expandedRange": 471.9348260951599
+    },
+    "cell.friend2_6": {
+      "sourceMin": -20.35354193331642,
+      "sourceMax": -1.7667477348389014,
+      "sourceRange": 18.58679419847752,
+      "expandedMin": -38.94033613179394,
+      "expandedMax": 16.82004646363862,
+      "expandedRange": 55.76038259543256
+    },
+    "deploy.center": {
+      "sourceMin": -0.7954450274351554,
+      "sourceMax": 21.806629252042576,
+      "sourceRange": 22.602074279477733,
+      "expandedMin": -23.39751930691289,
+      "expandedMax": 44.40870353152031,
+      "expandedRange": 67.8062228384332
+    },
+    "deploy.enemyBase": {
+      "sourceMin": -51.22985116659547,
+      "sourceMax": 79.42010294500461,
+      "sourceRange": 130.6499541116001,
+      "expandedMin": -181.87980527819556,
+      "expandedMax": 210.07005705660472,
+      "expandedRange": 391.9498623348003
+    },
+    "deploy.exposure": {
+      "sourceMin": -30.051843996661457,
+      "sourceMax": 21.315964762038643,
+      "sourceRange": 51.3678087587001,
+      "expandedMin": -81.41965275536155,
+      "expandedMax": 72.68377352073874,
+      "expandedRange": 154.1034262761003
+    },
+    "deploy.support": {
+      "sourceMin": -7.4357137192704945,
+      "sourceMax": 5.771244685991257,
+      "sourceRange": 13.206958405261751,
+      "expandedMin": -20.642672124532247,
+      "expandedMax": 18.978203091253008,
+      "expandedRange": 39.620875215785254
+    },
+    "desiredRatio.A>A": {
+      "sourceMin": -10.878479590326656,
+      "sourceMax": 9.096324160341496,
+      "sourceRange": 19.97480375066815,
+      "expandedMin": -30.853283340994807,
+      "expandedMax": 29.071127911009647,
+      "expandedRange": 59.924411252004454
+    },
+    "desiredRatio.A>C": {
+      "sourceMin": -6.753607327716538,
+      "sourceMax": 14.020649276266168,
+      "sourceRange": 20.774256603982707,
+      "expandedMin": -27.527863931699244,
+      "expandedMax": 34.794905880248876,
+      "expandedRange": 62.32276981194812
+    },
+    "desiredRatio.A>P": {
+      "sourceMin": -1.3634640405048553,
+      "sourceMax": 7.536958421957962,
+      "sourceRange": 8.900422462462817,
+      "expandedMin": -10.263886502967672,
+      "expandedMax": 16.43738088442078,
+      "expandedRange": 26.70126738738845
+    },
+    "desiredRatio.C>A": {
+      "sourceMin": -1.5981116540093239,
+      "sourceMax": 6.75984807269235,
+      "sourceRange": 8.357959726701674,
+      "expandedMin": -9.956071380710998,
+      "expandedMax": 15.117807799394026,
+      "expandedRange": 25.073879180105024
+    },
+    "desiredRatio.C>C": {
+      "sourceMin": -1.1172717101184615,
+      "sourceMax": 7.7395180858293,
+      "sourceRange": 8.856789795947762,
+      "expandedMin": -9.974061506066224,
+      "expandedMax": 16.59630788177706,
+      "expandedRange": 26.570369387843286
+    },
+    "desiredRatio.C>P": {
+      "sourceMin": -19.698450369747494,
+      "sourceMax": 34.618403349305716,
+      "sourceRange": 54.31685371905321,
+      "expandedMin": -74.01530408880072,
+      "expandedMax": 88.93525706835894,
+      "expandedRange": 162.95056115715965
+    },
+    "desiredRatio.P>A": {
+      "sourceMin": -4.60248170583993,
+      "sourceMax": 11.426051534239395,
+      "sourceRange": 16.028533240079327,
+      "expandedMin": -20.631014945919258,
+      "expandedMax": 27.45458477431872,
+      "expandedRange": 48.08559972023798
+    },
+    "desiredRatio.P>C": {
+      "sourceMin": -9.638698072334746,
+      "sourceMax": 10.587048838883977,
+      "sourceRange": 20.22574691121872,
+      "expandedMin": -29.864444983553465,
+      "expandedMax": 30.812795750102698,
+      "expandedRange": 60.67724073365616
+    },
+    "desiredRatio.P>P": {
+      "sourceMin": -17.230783924491046,
+      "sourceMax": 17.109470178590072,
+      "sourceRange": 34.34025410308112,
+      "expandedMin": -51.57103802757217,
+      "expandedMax": 51.449724281671195,
+      "expandedRange": 103.02076230924337
+    },
+    "pos36.A|enemy|C|1": {
+      "sourceMin": -91.38945497730144,
+      "sourceMax": 63.03524726091848,
+      "sourceRange": 154.42470223821994,
+      "expandedMin": -245.8141572155214,
+      "expandedMax": 217.45994949913842,
+      "expandedRange": 463.2741067146598
+    },
+    "pos36.A|enemy|C|2": {
+      "sourceMin": -62.6947715103894,
+      "sourceMax": 32.634001322700925,
+      "sourceRange": 95.32877283309033,
+      "expandedMin": -158.02354434347973,
+      "expandedMax": 127.96277415579124,
+      "expandedRange": 285.98631849927096
+    },
+    "pos36.A|enemy|C|3": {
+      "sourceMin": -40.792877726007255,
+      "sourceMax": 57.553507441241884,
+      "sourceRange": 98.34638516724914,
+      "expandedMin": -139.1392628932564,
+      "expandedMax": 155.89989260849103,
+      "expandedRange": 295.0391555017474
+    },
+    "pos36.A|enemy|P|1": {
+      "sourceMin": -64.89281039500278,
+      "sourceMax": 76.3239967159103,
+      "sourceRange": 141.21680711091307,
+      "expandedMin": -206.10961750591585,
+      "expandedMax": 217.54080382682335,
+      "expandedRange": 423.6504213327392
+    },
+    "pos36.A|enemy|P|2": {
+      "sourceMin": -43.77938778319701,
+      "sourceMax": 63.599396491316774,
+      "sourceRange": 107.37878427451378,
+      "expandedMin": -151.15817205771077,
+      "expandedMax": 170.97818076583053,
+      "expandedRange": 322.1363528235413
+    },
+    "pos36.A|enemy|P|3": {
+      "sourceMin": -66.2966324691912,
+      "sourceMax": 97.88591865509792,
+      "sourceRange": 164.18255112428912,
+      "expandedMin": -230.4791835934803,
+      "expandedMax": 262.06846977938704,
+      "expandedRange": 492.54765337286733
+    },
+    "pos36.A|friend|A|1": {
+      "sourceMin": -64.89432070883984,
+      "sourceMax": 49.10861788461059,
+      "sourceRange": 114.00293859345044,
+      "expandedMin": -178.89725930229028,
+      "expandedMax": 163.11155647806103,
+      "expandedRange": 342.0088157803513
+    },
+    "pos36.A|friend|A|2": {
+      "sourceMin": -56.10226443991647,
+      "sourceMax": 38.55496159966446,
+      "sourceRange": 94.65722603958093,
+      "expandedMin": -150.75949047949743,
+      "expandedMax": 133.2121876392454,
+      "expandedRange": 283.97167811874283
+    },
+    "pos36.A|friend|A|3": {
+      "sourceMin": -118.54757086120676,
+      "sourceMax": 46.14799932090162,
+      "sourceRange": 164.69557018210838,
+      "expandedMin": -283.2431410433152,
+      "expandedMax": 210.84356950301,
+      "expandedRange": 494.0867105463252
+    },
+    "pos36.A|friend|P|1": {
+      "sourceMin": -55.06679438930797,
+      "sourceMax": 66.39649068965369,
+      "sourceRange": 121.46328507896166,
+      "expandedMin": -176.5300794682696,
+      "expandedMax": 187.85977576861535,
+      "expandedRange": 364.38985523688496
+    },
+    "pos36.A|friend|P|2": {
+      "sourceMin": -85.4062206231343,
+      "sourceMax": 67.12451852434003,
+      "sourceRange": 152.53073914747432,
+      "expandedMin": -237.9369597706086,
+      "expandedMax": 219.65525767181435,
+      "expandedRange": 457.59221744242296
+    },
+    "pos36.A|friend|P|3": {
+      "sourceMin": -20.80366327542869,
+      "sourceMax": 17.72570776822009,
+      "sourceRange": 38.52937104364878,
+      "expandedMin": -59.33303431907747,
+      "expandedMax": 56.25507881186887,
+      "expandedRange": 115.58811313094634
+    },
+    "pos36.C|enemy|A|1": {
+      "sourceMin": -62.445993252206904,
+      "sourceMax": 110.97812958138894,
+      "sourceRange": 173.42412283359585,
+      "expandedMin": -235.87011608580272,
+      "expandedMax": 284.4022524149848,
+      "expandedRange": 520.2723685007875
+    },
+    "pos36.C|enemy|A|2": {
+      "sourceMin": -18.236906454819586,
+      "sourceMax": 17.09571716115338,
+      "sourceRange": 35.33262361597296,
+      "expandedMin": -53.569530070792545,
+      "expandedMax": 52.428340777126344,
+      "expandedRange": 105.99787084791889
+    },
+    "pos36.C|enemy|A|3": {
+      "sourceMin": -72.88728733173753,
+      "sourceMax": 64.63988766640163,
+      "sourceRange": 137.52717499813917,
+      "expandedMin": -210.4144623298767,
+      "expandedMax": 202.16706266454082,
+      "expandedRange": 412.5815249944175
+    },
+    "pos36.C|enemy|P|1": {
+      "sourceMin": -114.26542731294808,
+      "sourceMax": 78.83541731376636,
+      "sourceRange": 193.10084462671443,
+      "expandedMin": -307.3662719396625,
+      "expandedMax": 271.9362619404808,
+      "expandedRange": 579.3025338801433
+    },
+    "pos36.C|enemy|P|2": {
+      "sourceMin": -102.20722225192851,
+      "sourceMax": 51.16195589181095,
+      "sourceRange": 153.36917814373948,
+      "expandedMin": -255.576400395668,
+      "expandedMax": 204.53113403555042,
+      "expandedRange": 460.1075344312184
+    },
+    "pos36.C|enemy|P|3": {
+      "sourceMin": -14.70814887804413,
+      "sourceMax": 31.762213739395712,
+      "sourceRange": 46.47036261743984,
+      "expandedMin": -61.178511495483974,
+      "expandedMax": 78.23257635683555,
+      "expandedRange": 139.41108785231953
+    },
+    "pos36.C|friend|C|1": {
+      "sourceMin": -44.97494400702772,
+      "sourceMax": 33.30132788706121,
+      "sourceRange": 78.27627189408894,
+      "expandedMin": -123.25121590111665,
+      "expandedMax": 111.57759978115014,
+      "expandedRange": 234.8288156822668
+    },
+    "pos36.C|friend|C|2": {
+      "sourceMin": -24.74896321425159,
+      "sourceMax": 38.40270441429203,
+      "sourceRange": 63.15166762854362,
+      "expandedMin": -87.90063084279521,
+      "expandedMax": 101.55437204283564,
+      "expandedRange": 189.45500288563085
+    },
+    "pos36.C|friend|C|3": {
+      "sourceMin": -36.45287593438065,
+      "sourceMax": 35.19240149270941,
+      "sourceRange": 71.64527742709006,
+      "expandedMin": -108.09815336147072,
+      "expandedMax": 106.83767891979947,
+      "expandedRange": 214.9358322812702
+    },
+    "pos36.C|friend|P|1": {
+      "sourceMin": -16.75249180224582,
+      "sourceMax": 12.160236505168625,
+      "sourceRange": 28.912728307414447,
+      "expandedMin": -45.66522010966027,
+      "expandedMax": 41.072964812583066,
+      "expandedRange": 86.73818492224333
+    },
+    "pos36.C|friend|P|2": {
+      "sourceMin": -88.85259270881119,
+      "sourceMax": 163.63167899879014,
+      "sourceRange": 252.48427170760132,
+      "expandedMin": -341.3368644164125,
+      "expandedMax": 416.11595070639146,
+      "expandedRange": 757.4528151228039
+    },
+    "pos36.C|friend|P|3": {
+      "sourceMin": -107.70874822912498,
+      "sourceMax": 59.72790235244194,
+      "sourceRange": 167.4366505815669,
+      "expandedMin": -275.14539881069186,
+      "expandedMax": 227.16455293400884,
+      "expandedRange": 502.3099517447007
+    },
+    "pos36.P|enemy|A|1": {
+      "sourceMin": -41.87567820276796,
+      "sourceMax": 44.60706824755964,
+      "sourceRange": 86.4827464503276,
+      "expandedMin": -128.35842465309557,
+      "expandedMax": 131.08981469788725,
+      "expandedRange": 259.4482393509828
+    },
+    "pos36.P|enemy|A|2": {
+      "sourceMin": -40.55436226044282,
+      "sourceMax": 21.929184480091607,
+      "sourceRange": 62.48354674053443,
+      "expandedMin": -103.03790900097725,
+      "expandedMax": 84.41273122062604,
+      "expandedRange": 187.4506402216033
+    },
+    "pos36.P|enemy|A|3": {
+      "sourceMin": -63.97571304404403,
+      "sourceMax": 65.50812381852253,
+      "sourceRange": 129.48383686256656,
+      "expandedMin": -193.45954990661056,
+      "expandedMax": 194.9919606810891,
+      "expandedRange": 388.45151058769966
+    },
+    "pos36.P|enemy|C|1": {
+      "sourceMin": -71.14473816223327,
+      "sourceMax": 39.176818743414316,
+      "sourceRange": 110.32155690564758,
+      "expandedMin": -181.46629506788085,
+      "expandedMax": 149.4983756490619,
+      "expandedRange": 330.96467071694275
+    },
+    "pos36.P|enemy|C|2": {
+      "sourceMin": -74.31781447879644,
+      "sourceMax": 88.06568958335313,
+      "sourceRange": 162.38350406214957,
+      "expandedMin": -236.70131854094603,
+      "expandedMax": 250.4491936455027,
+      "expandedRange": 487.15051218644874
+    },
+    "pos36.P|enemy|C|3": {
+      "sourceMin": -24.261062734557022,
+      "sourceMax": 50.40891457296937,
+      "sourceRange": 74.6699773075264,
+      "expandedMin": -98.93104004208342,
+      "expandedMax": 125.07889188049577,
+      "expandedRange": 224.0099319225792
+    },
+    "pos36.P|friend|C|1": {
+      "sourceMin": -35.053814822323304,
+      "sourceMax": 36.635199616587414,
+      "sourceRange": 71.68901443891072,
+      "expandedMin": -106.74282926123402,
+      "expandedMax": 108.32421405549815,
+      "expandedRange": 215.06704331673217
+    },
+    "pos36.P|friend|C|2": {
+      "sourceMin": -59.33058583979971,
+      "sourceMax": 80.18893841067931,
+      "sourceRange": 139.51952425047904,
+      "expandedMin": -198.85011009027875,
+      "expandedMax": 219.70846266115836,
+      "expandedRange": 418.5585727514371
+    },
+    "pos36.P|friend|C|3": {
+      "sourceMin": -90.07531000292418,
+      "sourceMax": 43.01349977476792,
+      "sourceRange": 133.08880977769212,
+      "expandedMin": -223.16411978061632,
+      "expandedMax": 176.10230955246004,
+      "expandedRange": 399.26642933307636
+    },
+    "pos36.P|friend|P|1": {
+      "sourceMin": -52.96093326847302,
+      "sourceMax": 80.92668739873207,
+      "sourceRange": 133.88762066720508,
+      "expandedMin": -186.84855393567813,
+      "expandedMax": 214.81430806593715,
+      "expandedRange": 401.6628620016153
+    },
+    "pos36.P|friend|P|2": {
+      "sourceMin": -69.04440309845225,
+      "sourceMax": 74.32802086611503,
+      "sourceRange": 143.37242396456728,
+      "expandedMin": -212.41682706301953,
+      "expandedMax": 217.70044483068233,
+      "expandedRange": 430.11727189370185
+    },
+    "pos36.P|friend|P|3": {
+      "sourceMin": -114.9260609324092,
+      "sourceMax": 79.33785976914636,
+      "sourceRange": 194.26392070155555,
+      "expandedMin": -309.18998163396475,
+      "expandedMax": 273.6017804707019,
+      "expandedRange": 582.7917621046666
+    },
+    "recruitBase.A": {
+      "sourceMin": 0.6231426406539629,
+      "sourceMax": 5.410000187129741,
+      "sourceRange": 4.786857546475778,
+      "expandedMin": -4.163714905821815,
+      "expandedMax": 10.196857733605519,
+      "expandedRange": 14.360572639427334
+    },
+    "recruitBase.C": {
+      "sourceMin": -12.46545766865625,
+      "sourceMax": 11.081041102400523,
+      "sourceRange": 23.546498771056772,
+      "expandedMin": -36.01195643971302,
+      "expandedMax": 34.627539873457295,
+      "expandedRange": 70.63949631317031
+    },
+    "recruitBase.P": {
+      "sourceMin": -2.7199704789862174,
+      "sourceMax": 5.619311949790646,
+      "sourceRange": 8.339282428776864,
+      "expandedMin": -11.059252907763081,
+      "expandedMax": 13.958594378567511,
+      "expandedRange": 25.017847286330593
+    },
+    "recruitResponse.A>A": {
+      "sourceMin": -10.006265207148253,
+      "sourceMax": 11.830079825899178,
+      "sourceRange": 21.83634503304743,
+      "expandedMin": -31.842610240195686,
+      "expandedMax": 33.66642485894661,
+      "expandedRange": 65.5090350991423
+    },
+    "recruitResponse.A>C": {
+      "sourceMin": -19.590594887128628,
+      "sourceMax": 10.860726078752403,
+      "sourceRange": 30.45132096588103,
+      "expandedMin": -50.04191585300966,
+      "expandedMax": 41.31204704463344,
+      "expandedRange": 91.3539628976431
+    },
+    "recruitResponse.A>P": {
+      "sourceMin": -12.35922649083187,
+      "sourceMax": 13.045795157539056,
+      "sourceRange": 25.405021648370926,
+      "expandedMin": -37.76424813920279,
+      "expandedMax": 38.45081680590998,
+      "expandedRange": 76.21506494511277
+    },
+    "recruitResponse.C>A": {
+      "sourceMin": -5.1086436033816405,
+      "sourceMax": 9.921040192162634,
+      "sourceRange": 15.029683795544274,
+      "expandedMin": -20.138327398925917,
+      "expandedMax": 24.95072398770691,
+      "expandedRange": 45.089051386632825
+    },
+    "recruitResponse.C>C": {
+      "sourceMin": -2.2219017920144584,
+      "sourceMax": 4.041623383199614,
+      "sourceRange": 6.263525175214072,
+      "expandedMin": -8.48542696722853,
+      "expandedMax": 10.305148558413688,
+      "expandedRange": 18.79057552564222
+    },
+    "recruitResponse.C>P": {
+      "sourceMin": -17.43969131456147,
+      "sourceMax": 13.65741336791654,
+      "sourceRange": 31.097104682478008,
+      "expandedMin": -48.536795997039476,
+      "expandedMax": 44.75451805039455,
+      "expandedRange": 93.29131404743403
+    },
+    "recruitResponse.P>A": {
+      "sourceMin": -15.814380775689838,
+      "sourceMax": 9.861294266198968,
+      "sourceRange": 25.675675041888805,
+      "expandedMin": -41.49005581757864,
+      "expandedMax": 35.53696930808777,
+      "expandedRange": 77.02702512566641
+    },
+    "recruitResponse.P>C": {
+      "sourceMin": -12.076539162398918,
+      "sourceMax": 10.556110302314515,
+      "sourceRange": 22.63264946471343,
+      "expandedMin": -34.70918862711235,
+      "expandedMax": 33.18875976702794,
+      "expandedRange": 67.89794839414029
+    },
+    "recruitResponse.P>P": {
+      "sourceMin": -6.678992654226492,
+      "sourceMax": 7.437214139169169,
+      "sourceRange": 14.11620679339566,
+      "expandedMin": -20.795199447622153,
+      "expandedMax": 21.553420932564826,
+      "expandedRange": 42.34862038018698
+    },
+    "search.breadth": {
+      "sourceMin": -21.41986260885474,
+      "sourceMax": 53.25439773291889,
+      "sourceRange": 74.67426034177363,
+      "expandedMin": -96.09412295062837,
+      "expandedMax": 127.92865807469254,
+      "expandedRange": 224.0227810253209
+    },
+    "search.exploration": {
+      "sourceMin": -0.6210524924224153,
+      "sourceMax": 1.0345406145853138,
+      "sourceRange": 1.655593107007729,
+      "expandedMin": -2.2766455994301444,
+      "expandedMax": 2.690133721593043,
+      "expandedRange": 4.966779321023187
+    },
+    "search.ordering": {
+      "sourceMin": -1.164549175046202,
+      "sourceMax": 3.7238380153526625,
+      "sourceRange": 4.8883871903988645,
+      "expandedMin": -6.052936365445067,
+      "expandedMax": 8.612225205751527,
+      "expandedRange": 14.665161571196593
+    },
+    "sequence.coordinatedCombo": {
+      "sourceMin": -142.5845394257635,
+      "sourceMax": 81.47433144634171,
+      "sourceRange": 224.05887087210522,
+      "expandedMin": -366.64341029786874,
+      "expandedMax": 305.5332023184469,
+      "expandedRange": 672.1766126163157
+    },
+    "sequence.doubleCapture": {
+      "sourceMin": -82.85884964525258,
+      "sourceMax": 205.61739227924957,
+      "sourceRange": 288.4762419245021,
+      "expandedMin": -371.3350915697547,
+      "expandedMax": 494.09363420375166,
+      "expandedRange": 865.4287257735064
+    },
+    "sequence.sameUnitCombo": {
+      "sourceMin": -178.38236953315362,
+      "sourceMax": 103.1247274037218,
+      "sourceRange": 281.5070969368754,
+      "expandedMin": -459.88946647002905,
+      "expandedMax": 384.63182434059723,
+      "expandedRange": 844.5212908106263
+    },
+    "sequence.secondAction": {
+      "sourceMin": -306.564334444134,
+      "sourceMax": 314.2546995185202,
+      "sourceRange": 620.8190339626542,
+      "expandedMin": -927.3833684067881,
+      "expandedMax": 935.0737334811745,
+      "expandedRange": 1862.4571018879626
+    }
+  }
+}

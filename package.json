@@ -4,9 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "build": "node scripts/build.mjs",
     "test": "node --test",
     "test:unit": "node --test test/engine/board.test.js",
     "test:golden": "node --test test/engine/golden.test.js",
+    "verify:step3": "node --test test/evolution/*.test.js",
+    "verify:step4": "node --test test/persistence/*.test.js",
+    "verify:step5": "node --test test/portable/*.test.js",
     "verify:golden": "node scripts/verify-golden.mjs"
   }
 }
