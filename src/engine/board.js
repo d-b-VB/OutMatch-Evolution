@@ -510,7 +510,7 @@ export function planTurn(state, side, genome, depth = 3) {
   return { score, state: plannedState, actions };
 }
 
-export function playSideTurn(state, side, genome, depth = 3) {
+export function playSideTurn(state, side, genome, depth = 3, onAction = null) {
   const deployed = beginSideTurn(state, side, genome);
   const recruited = state.round % 2 === 1 && state.pending[side] === null
     ? commitRecruitment(state, side, genome)
@@ -520,6 +520,7 @@ export function playSideTurn(state, side, genome, depth = 3) {
     const action = chooseAction(state, side, genome, depth, actions);
     applyAction(state, action);
     actions.push(action);
+    if (onAction) onAction(structuredClone(action), structuredClone(state));
     const result = gameResult(state);
     if (result.status === "complete") {
       return { deployed, recruited, actions, result };
@@ -551,17 +552,22 @@ function ledgerFromState(state, result) {
   };
 }
 
-export function runGame(redGenome, blueGenome, { depth = 3 } = {}) {
+export function runGame(redGenome, blueGenome, { depth = 3, captureReplay = false } = {}) {
   const state = initialState();
   const genomes = { R: redGenome, B: blueGenome };
+  const replay = captureReplay ? { frames: [structuredClone(state)], actions: [] } : null;
   while (true) {
     for (const side of ["R", "B"]) {
-      const turn = playSideTurn(state, side, genomes[side], depth);
+      const turn = playSideTurn(state, side, genomes[side], depth, captureReplay ? (action, frame) => {
+        replay.actions.push(action);
+        replay.frames.push(frame);
+      } : null);
       if (turn.result.status === "complete") {
         return {
           result: turn.result,
           ledger: ledgerFromState(state, turn.result),
-          state
+          state,
+          ...(captureReplay ? { replay } : {})
         };
       }
     }

@@ -2,6 +2,7 @@ import { runGame } from "../engine/board.js";
 import { createScheduledGame } from "./schedule.js";
 
 export const WORKER_PROTOCOL_VERSION = "reach-game-worker-v1";
+export const EXHIBITION_REQUEST_TYPE = "run_exhibition";
 
 function validateGenome(genome, expectedId, color) {
   if (genome === null || typeof genome !== "object" || genome.id !== expectedId || genome.genes === undefined) {
@@ -88,6 +89,33 @@ export function validateGameResult(message, request) {
   return message;
 }
 
+/** Build a replay-producing request which is never valid as an evolutionary ledger job. */
+export function createExhibitionRequest({ jobId, redGenome, blueGenome, engineOptions = { depth: 3 } }) {
+  if (typeof jobId !== "string" || !jobId) throw new Error("Exhibition job ID must be a non-empty string");
+  if (typeof redGenome?.id !== "string" || !redGenome.id || typeof blueGenome?.id !== "string" || !blueGenome.id) {
+    throw new Error("Exhibition genomes require IDs");
+  }
+  validateGenome(redGenome, redGenome?.id, "Red");
+  validateGenome(blueGenome, blueGenome?.id, "Blue");
+  if (redGenome.id === blueGenome.id) throw new Error("Exhibition generals must be different");
+  if (!Number.isSafeInteger(engineOptions.depth) || engineOptions.depth < 1 || engineOptions.depth > 3) {
+    throw new Error(`Invalid exhibition engine depth: ${engineOptions.depth}`);
+  }
+  return {
+    protocol: WORKER_PROTOCOL_VERSION, type: EXHIBITION_REQUEST_TYPE, jobId,
+    redGenome, blueGenome, engineOptions: { depth: engineOptions.depth }
+  };
+}
+
+export function validateExhibitionResult(message, request) {
+  const expected = createExhibitionRequest(request);
+  if (message?.protocol !== WORKER_PROTOCOL_VERSION || message.type !== "exhibition_result"
+    || message.jobId !== expected.jobId || message.game?.redId !== expected.redGenome.id
+    || message.game?.blueId !== expected.blueGenome.id || !Array.isArray(message.game?.replay?.frames)
+    || !Array.isArray(message.game?.replay?.actions)) throw new Error("Exhibition result does not match its request");
+  return message;
+}
+
 /** Construct a structured worker failure without leaking non-cloneable Error state. */
 export function createGameError(request, error) {
   const validated = validateGameRequest(request);
@@ -105,6 +133,17 @@ export function createGameError(request, error) {
 
 /** Execute one validated request; usable directly in tests and by the Worker entry point. */
 export function handleGameRequest(message, runGameImpl = runGame) {
+  if (message?.type === EXHIBITION_REQUEST_TYPE) {
+    const request = createExhibitionRequest(message);
+    const result = runGameImpl(request.redGenome, request.blueGenome, { ...request.engineOptions, captureReplay: true });
+    return {
+      protocol: WORKER_PROTOCOL_VERSION, type: "exhibition_result", jobId: request.jobId,
+      game: {
+        redId: request.redGenome.id, blueId: request.blueGenome.id,
+        result: structuredClone(result.result), ledger: structuredClone(result.ledger), replay: structuredClone(result.replay)
+      }
+    };
+  }
   const request = validateGameRequest(message);
   const { ledger } = runGameImpl(request.redGenome, request.blueGenome, request.engineOptions);
   return createGameResult(request, ledger);
