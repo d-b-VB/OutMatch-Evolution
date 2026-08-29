@@ -13,6 +13,7 @@
     "verify:step4": "node --test test/persistence/*.test.js",
     "verify:step5": "node --test test/portable/*.test.js",
     "verify:step6": "node --test test/ui/*.test.js",
+    "verify:browser": "node scripts/browser-smoke.mjs",
     "verify:golden": "node scripts/verify-golden.mjs"
   }
 }

@@ -10,8 +10,8 @@
    - Checkpoint in-progress work, preserve immutable completed generations in IndexedDB, and support pause/resume without losing progress.
 5. **Implement portable data files — complete**
    - Export and validate self-contained `.omgen` archives, then verify that imported generations can continue evolving.
-6. **Create the lab interface — in progress**
-   - Provide run controls, ecological levers, audited population interventions, progress feedback, required reports, and deterministic game replay.
+6. **Create the lab interface — in progress (Batch 6.6 accessibility groundwork complete)**
+   - Accessible navigation, focus management, and a Chromium smoke/screenshot command are implemented; full real-browser integration acceptance remains.
 7. **Validate and deploy — pending browser integration**
    - Automate the acceptance suite, confirm responsive browser behavior, document development and deployment, and publish a GitHub Pages-compatible build.
 
