@@ -2,6 +2,7 @@ import { selectedLabRecords } from "./state.js";
 import { CONTROL_EXPLANATIONS, DEFAULT_LAB_CONTROLS } from "./controls.js";
 import { R29_POPULATIONS } from "../baseline/checkpoint.js";
 import { formatProgressTimestamp, summarizeRunProgress } from "./progress.js";
+import { buildReportView } from "./report-view.js";
 
 const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
@@ -18,12 +19,14 @@ function interventionLabel(operation) {
 }
 
 export function renderLabShell(state, {
-  notice = null, storage = null, draftControls = DEFAULT_LAB_CONTROLS, controlReview = null, progress = null
+  notice = null, storage = null, draftControls = DEFAULT_LAB_CONTROLS, controlReview = null, progress = null,
+  selectedReportId = null
 } = {}) {
   const { run, generation } = selectedLabRecords(state);
   const runGenerations = state.generations.filter(item => item.runId === state.selectedRunId);
   const status = generation ? "Generation archived" : run ? "Run ready" : "No local runs";
   const progressSummary = summarizeRunProgress(progress);
+  const reportView = buildReportView(generation, selectedReportId);
   return `
     <div class="lab-shell">
       ${notice ? `<div class="notice ${escapeHtml(notice.kind)}" role="status">${escapeHtml(notice.message)}</div>` : ""}
@@ -88,6 +91,14 @@ export function renderLabShell(state, {
           </div>
           ${controlReview ? `<div class="control-review" role="status"><p class="eyebrow">Deterministic review</p><h3>Draft locked for review</h3>
             <code>${escapeHtml(controlReview.controlsHash)}</code>${controlReview.interventionsHash ? `<small>Interventions ${escapeHtml(controlReview.interventionsHash)}</small>` : ""}<dl><dt>Workers</dt><dd>${controlReview.controls.workerCount}</dd><dt>Migration</dt><dd>${controlReview.controls.migrationEnabled ? `Up to ${controlReview.controls.maximumMigrants}` : "Off"}</dd><dt>Wildcard</dt><dd>${controlReview.controls.wildcardProbability}</dd><dt>Mutation</dt><dd>${controlReview.controls.mutationProbability}</dd></dl></div>` : ""}
+        </section>
+        <section class="reports-panel" id="reports"><div><p class="eyebrow">Immutable analytics</p><h2>Generation reports</h2>
+          <p class="intro">Reports are read directly from the selected completed generation. Downloads never alter its evolutionary ledger.</p></div>
+          ${reportView.selected ? `<div class="report-card"><div class="report-toolbar"><label>Report<select id="report-select">${options(reportView.reports, report => report.id, report => report.label)}</select></label>
+            <div><button id="report-json" class="ghost" type="button">JSON</button><button id="report-csv" class="ghost" type="button" ${reportView.matrix ? "" : "disabled"}>CSV</button></div></div>
+            <h3>${escapeHtml(reportView.selected.label)}</h3>${reportView.matrix ? `<div class="matrix-scroll"><table><thead><tr><th>Population</th>${reportView.matrix.columns.map(column => `<th>${escapeHtml(column)}</th>`).join("")}</tr></thead><tbody>${reportView.matrix.rows.map(row => `<tr><th>${escapeHtml(row.row)}</th>${row.values.map(value => `<td>${value == null ? "—" : escapeHtml(Number(value).toFixed(3))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`
+              : `<pre>${escapeHtml(JSON.stringify(reportView.selected.value, null, 2))}</pre>`}</div>`
+            : '<div class="report-card empty-progress"><b>No archived reports selected</b><span>Choose a completed generation to inspect its immutable analytics.</span></div>'}
         </section>
       </main>
       <footer><span>OutMatch Reach · deterministic by design</span><span>Data stays on this device</span></footer>

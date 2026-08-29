@@ -105,3 +105,18 @@ test("durable progress renders phase, safe cursor, and checkpoint metadata", () 
   assert.match(html, /<dd>5<\/dd>/);
   assert.match(html, /2026-08-29 12:30:00 UTC/);
 });
+
+test("archived report matrices render with safe download controls", () => {
+  const reportGeneration = {
+    ...generations[0], reports: { elimination: { matrix: {
+      alpha: { alpha: null, beta: 0.25 }, beta: { alpha: 0.75, beta: null }
+    } } }, rankings: [], migration: {}, breeding: {}
+  };
+  const state = createLabState({ runs, generations: [reportGeneration] });
+  const html = renderLabShell(state, { selectedReportId: "elimination" });
+  assert.match(html, /Generation reports/);
+  assert.match(html, /Elimination matrix/);
+  assert.match(html, /<td>0.250<\/td>/);
+  assert.match(html, /report-json/);
+  assert.match(html, /report-csv/);
+});

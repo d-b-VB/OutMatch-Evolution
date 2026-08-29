@@ -6,6 +6,7 @@ import {
 } from "./actions.js";
 import { controlsFromForm, DEFAULT_LAB_CONTROLS, reviewLabControls, validateLabControls } from "./controls.js";
 import { interventionFromForm } from "./interventions.js";
+import { buildReportView, reportDownload } from "./report-view.js";
 import { renderLabShell } from "./render.js";
 import { createLabState, selectGeneration, selectRun } from "./state.js";
 
@@ -19,6 +20,7 @@ let storage;
 let draftControls = DEFAULT_LAB_CONTROLS;
 let controlReview;
 let progress;
+let selectedReportId;
 
 async function refresh(preferredRunId = null) {
   const runs = await repositories.runs.list();
@@ -29,17 +31,35 @@ async function refresh(preferredRunId = null) {
 }
 
 function paint() {
-  root.innerHTML = renderLabShell(state, { notice, storage, draftControls, controlReview, progress });
+  root.innerHTML = renderLabShell(state, { notice, storage, draftControls, controlReview, progress, selectedReportId });
   const runSelect = root.querySelector("#run-select");
   const generationSelect = root.querySelector("#generation-select");
   if (runSelect && state.selectedRunId) runSelect.value = state.selectedRunId;
   if (generationSelect && state.selectedGeneration) generationSelect.value = state.selectedGeneration;
+  const reportSelect = root.querySelector("#report-select");
+  if (reportSelect && selectedReportId) reportSelect.value = selectedReportId;
   runSelect?.addEventListener("change", async event => {
-    state = selectRun(state, event.target.value); settings = await persistLabSelection(repositories.settings, state, settings); paint();
+    state = selectRun(state, event.target.value); selectedReportId = null;
+    settings = await persistLabSelection(repositories.settings, state, settings); paint();
   });
   generationSelect?.addEventListener("change", async event => {
-    state = selectGeneration(state, event.target.value); settings = await persistLabSelection(repositories.settings, state, settings); paint();
+    state = selectGeneration(state, event.target.value); selectedReportId = null;
+    settings = await persistLabSelection(repositories.settings, state, settings); paint();
   });
+  reportSelect?.addEventListener("change", event => { selectedReportId = event.target.value; paint(); });
+  for (const [selector, format] of [["#report-json", "json"], ["#report-csv", "csv"]]) {
+    root.querySelector(selector)?.addEventListener("click", () => {
+      try {
+        const generation = state.generations.find(item => item.runId === state.selectedRunId && item.generation === state.selectedGeneration);
+        const view = buildReportView(generation, selectedReportId);
+        const download = reportDownload(view, format);
+        const url = URL.createObjectURL(new Blob([download.text], { type: download.type }));
+        const anchor = document.createElement("a"); anchor.href = url;
+        anchor.download = `${state.selectedRunId}-${state.selectedGeneration}-${view.selected.id}.${download.extension}`;
+        anchor.click(); URL.revokeObjectURL(url);
+      } catch (error) { notice = { kind: "error", message: error.message }; paint(); }
+    });
+  }
 
   const newDialog = root.querySelector("#new-run-dialog");
   const importDialog = root.querySelector("#import-dialog");
