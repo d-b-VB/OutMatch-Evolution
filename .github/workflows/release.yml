@@ -1,0 +1,35 @@
+name: Publish release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify tag and changelog
+        run: npm run verify:version -- --tag="$GITHUB_REF_NAME"
+      - run: npm run verify:fixtures
+      - run: npm test
+      - run: npm run verify:pages
+      - name: Package static site and browser evidence
+        run: |
+          tar -czf "outmatch-reach-evolution-${GITHUB_REF_NAME}.tar.gz" dist
+          tar -czf "outmatch-browser-acceptance-${GITHUB_REF_NAME}.tar.gz" artifacts/browser
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "outmatch-reach-evolution-${GITHUB_REF_NAME}.tar.gz" \
+            "outmatch-browser-acceptance-${GITHUB_REF_NAME}.tar.gz" \
+            --title "OutMatch Reach Evolution ${GITHUB_REF_NAME}" \
+            --generate-notes

@@ -10,10 +10,10 @@
    - Checkpoint in-progress work, preserve immutable completed generations in IndexedDB, and support pause/resume without losing progress.
 5. **Implement portable data files — complete**
    - Export and validate self-contained `.omgen` archives, then verify that imported generations can continue evolving.
-6. **Create the lab interface — in progress**
-   - Provide run controls, ecological levers, audited population interventions, progress feedback, required reports, and deterministic game replay.
-7. **Validate and deploy — pending browser integration**
-   - Automate the acceptance suite, confirm responsive browser behavior, document development and deployment, and publish a GitHub Pages-compatible build.
+6. **Create the lab interface — complete**
+   - Durable production controls, accessible navigation, populations, interventions, graphical replays, and Chromium acceptance/screenshot automation are implemented and covered by the reported CI browser run.
+7. **Validate and deploy — release automation complete**
+   - Consolidated verification and project-subpath GitHub Pages delivery are implemented; repository owners only need to keep GitHub Actions selected as the Pages source.
 
 Work through these tasks in order: each fixture or acceptance gate should pass before relying on the corresponding subsystem in later phases.
 

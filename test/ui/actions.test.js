@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createLabRun, exportLabGeneration, inspectLabImport, loadLabStorage,
-  omgenFilename, persistDraftControls, persistLabSelection, removeLabRun
+  omgenFilename, persistControlReview, persistDraftControls, persistLabSelection, removeLabRun
 } from "../../src/ui/actions.js";
 import { DEFAULT_LAB_CONTROLS } from "../../src/ui/controls.js";
 import { PERSISTENCE_SCHEMAS } from "../../src/persistence/schema.js";
@@ -41,6 +41,24 @@ test("draft controls persist without discarding selected records", async () => {
   assert.equal(settings.draftControls.workerCount, 6);
   assert.equal(settings.selectedGeneration, "ReachR30");
   assert.equal(settings.extraPreference, true);
+  assert.equal(settings.controlReview, null);
+});
+
+test("reviewed controls persist the hashes and parent-bound intervention document", async () => {
+  const saved = [];
+  const review = {
+    controls: { ...DEFAULT_LAB_CONTROLS, workerCount: 3 }, controlsHash: "controls",
+    interventionsHash: "interventions",
+    interventions: { parentGeneration: "ReachR30", operations: [] }
+  };
+  const settings = await persistControlReview({ save: async value => saved.push(value) }, {
+    selectedRunId: "run-one", selectedGeneration: "ReachR30"
+  }, review, { extraPreference: true });
+  assert.deepEqual(settings.controlReview, review);
+  assert.equal(settings.workerCount, 3);
+  assert.equal(settings.extraPreference, true);
+  review.controls.workerCount = 9;
+  assert.equal(settings.controlReview.controls.workerCount, 3);
 });
 
 test("file inspection rejects missing and non-OMGEN files before parsing", async () => {

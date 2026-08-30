@@ -5,6 +5,8 @@ import {
   determineMigrantEligibility,
   evaluateHypotheticalDestination,
   selectMigrants,
+  planManualPopulationInterventions,
+  planAutomaticMigration,
   sortMigrationCandidates,
   validateMigrationResidentPools
 } from "../../src/evolution/migration.js";
@@ -63,6 +65,23 @@ test("automatic migrant selection honors enable and maximum controls", () => {
   assert.deepEqual(selectMigrants(candidates, { maximumMigrants: 2 }).map(candidate => candidate.id), ["g1", "g2"]);
 });
 
+test("automatic migration evaluates outsiders only for the recruiting population", () => {
+  const rows = [game("outsider", "resident")];
+  const populationByGenome = new Map([["outsider", "generalists"], ["resident", "horse_lords"]]);
+  const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population, []]));
+  rankings.generalists = [{ id: "outsider", rank: 30, fitness: 0 }];
+  rankings.horse_lords = [{ id: "resident", rank: 1, fitness: 0 }];
+  const plan = planAutomaticMigration({
+    rows, populationByGenome, rankings, destinationPopulation: "horse_lords", maximumMigrants: 1
+  });
+  assert.equal(plan.destinationPopulation, "horse_lords");
+  assert.deepEqual(plan.candidates.map(candidate => candidate.id), ["outsider"]);
+  assert.ok(plan.candidates.every(candidate => candidate.destinationPopulation === "horse_lords"));
+  assert.deepEqual(planAutomaticMigration({
+    rows, populationByGenome, rankings, destinationPopulation: "horse_lords", enabled: false
+  }), { destinationPopulation: "horse_lords", candidates: [], selected: [] });
+});
+
 test("migration removes outgoing survivors, inserts non-breeding migrants, and preserves pool sizes", () => {
   const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population,
     Array.from({ length: 5 }, (_, index) => ({ id: `${population}-${index + 1}`, rank: index + 1 }))]));
@@ -78,4 +97,52 @@ test("migration removes outgoing survivors, inserts non-breeding migrants, and p
   assert.equal(validateMigrationResidentPools(pools, 3), pools);
   pools.pike_lords[0] = pools.horse_lords[0];
   assert.throws(() => validateMigrationResidentPools(pools, 3), /multiple resident pools/);
+});
+
+test("manual moves and copies become audited non-breeding entrants", () => {
+  const parentGenomes = new Map([
+    ["source", { id: "source", population: "pike_lords" }],
+    ["copy-source", { id: "copy-source", population: "generalists" }]
+  ]);
+  const entrants = planManualPopulationInterventions([
+    { type: "manual-move", generalId: "source", from: "pike_lords", to: "horse_lords", note: "move" },
+    { type: "copy-entrant", sourceGeneralId: "copy-source", to: "pike_hunters", newId: "copy", newName: "Copy", note: "copy" }
+  ], parentGenomes);
+  assert.deepEqual(entrants.map(entry => [entry.id, entry.sourceId, entry.origin]), [
+    ["source", "source", "manual_migrant"], ["copy", "copy-source", "manual_copy"]
+  ]);
+  assert.throws(() => planManualPopulationInterventions([
+    { type: "copy-entrant", sourceGeneralId: "copy-source", to: "pike_hunters", newId: "source" }
+  ], parentGenomes), /Invalid copy entrant/);
+});
+
+test("manual copies retain their source while moves leave their source population", () => {
+  const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population,
+    Array.from({ length: 4 }, (_, index) => ({ id: `${population}-${index + 1}`, rank: index + 1 }))]));
+  const entrants = [
+    { id: "pike_lords-1", sourceId: "pike_lords-1", currentPopulation: "pike_lords", destinationPopulation: "generalists", destinationRank: 1, origin: "manual_migrant" },
+    { id: "copy", sourceId: "horse_lords-1", currentPopulation: "horse_lords", destinationPopulation: "generalists", destinationRank: 1, origin: "manual_copy", newName: "Copy" }
+  ];
+  const pools = applyMigrationToResidentPools(rankings, entrants, 3);
+  assert.ok(!pools.pike_lords.some(entry => entry.id === "pike_lords-1"));
+  assert.ok(pools.horse_lords.some(entry => entry.id === "horse_lords-1"));
+  assert.deepEqual(pools.generalists.slice(0, 2).map(entry => [entry.id, entry.origin, entry.sourceId]), [
+    ["pike_lords-1", "manual_migrant", "pike_lords-1"], ["copy", "manual_copy", "horse_lords-1"]
+  ]);
+});
+
+test("replacement uploads evict one resident and retain the audited uploaded genome", () => {
+  const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population,
+    Array.from({ length: 4 }, (_, index) => ({ id: `${population}-${index + 1}`, rank: index + 1 }))]));
+  const uploadedGenome = { id: "uploaded", name: "Uploaded", population: "horse_lords", genes: { value: 1 } };
+  const parentGenomes = new Map([["horse_lords-1", { id: "horse_lords-1", population: "horse_lords" }]]);
+  const [entrant] = planManualPopulationInterventions([{
+    type: "replacement-upload", replacesGeneralId: "horse_lords-1", to: "horse_lords",
+    genome: uploadedGenome, note: "replace"
+  }], parentGenomes);
+  const pools = applyMigrationToResidentPools(rankings, [entrant], 3);
+  assert.ok(!pools.horse_lords.some(entry => entry.id === "horse_lords-1"));
+  assert.equal(pools.horse_lords[0].id, "uploaded");
+  assert.deepEqual(pools.horse_lords[0].genome, uploadedGenome);
+  assert.equal(pools.horse_lords[0].breedingEligible, false);
 });

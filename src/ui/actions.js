@@ -40,7 +40,21 @@ export async function persistDraftControls(settingsRepository, state, controls, 
     selectedRunId: state.selectedRunId,
     selectedGeneration: state.selectedGeneration,
     workerCount: draftControls.workerCount,
-    draftControls
+    draftControls,
+    controlReview: null
+  };
+  await settingsRepository.save(settings);
+  return settings;
+}
+
+export async function persistControlReview(settingsRepository, state, controlReview, previous = null) {
+  const settings = {
+    ...previous,
+    schema: PERSISTENCE_SCHEMAS.settings, settingsId: "application",
+    selectedRunId: state.selectedRunId, selectedGeneration: state.selectedGeneration,
+    workerCount: controlReview.controls.workerCount,
+    draftControls: structuredClone(controlReview.controls),
+    controlReview: structuredClone(controlReview)
   };
   await settingsRepository.save(settings);
   return settings;
