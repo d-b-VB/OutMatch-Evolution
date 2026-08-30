@@ -31,7 +31,7 @@ function unitRateText(row, field, fallback) {
 
 export function renderLabShell(state, {
   notice = null, storage = null, draftControls = DEFAULT_LAB_CONTROLS, controlReview = null, progress = null,
-  selectedReportId = null, runOperation = createRunOperation(), populationOptions = {}, matchup = {}
+  liveProgress = null, selectedReportId = null, runOperation = createRunOperation(), populationOptions = {}, matchup = {}
 } = {}) {
   const { run, generation } = selectedLabRecords(state);
   const runGenerations = state.generations.filter(item => item.runId === state.selectedRunId);
@@ -91,7 +91,8 @@ export function renderLabShell(state, {
         <section class="progress-panel" id="run-progress" aria-live="polite" aria-busy="${runControls.active}"><div><p class="eyebrow">Durable execution</p><h2>${progressSummary ? escapeHtml(progressSummary.phaseLabel) : "No generation in progress"}</h2>
           <p class="intro">${progressSummary ? `Working toward ${escapeHtml(progressSummary.targetGeneration ?? "the next generation")}. Every displayed result is already represented by a safe local checkpoint.` : "A started generation will report its last safely committed tournament boundary here."}</p></div>
           ${progressSummary ? `<div class="progress-card"><div class="progress-heading"><span>${progressSummary.currentTotal ? `${progressSummary.currentCompleted} / ${progressSummary.currentTotal} current-stage games` : "Between deterministic stages"}</span><b>${progressSummary.percent}%</b></div>
-            <progress max="100" value="${progressSummary.percent}">${progressSummary.percent}%</progress><dl><dt>Durable games</dt><dd>${progressSummary.completedGames}</dd><dt>Challenger rounds</dt><dd>${progressSummary.challengerIterations}</dd><dt>Last checkpoint</dt><dd>${escapeHtml(formatProgressTimestamp(progressSummary.updatedAt))}</dd></dl></div>`
+            <progress max="100" value="${progressSummary.percent}">${progressSummary.percent}%</progress><dl><dt>Durable games</dt><dd>${progressSummary.completedGames}</dd><dt>Challenger rounds</dt><dd>${progressSummary.challengerIterations}</dd><dt>Last checkpoint</dt><dd>${escapeHtml(formatProgressTimestamp(progressSummary.updatedAt))}</dd></dl>
+            ${liveProgress ? `<div class="operation-status" role="status"><b>Worker activity</b><br>Fight ${liveProgress.completed} of ${liveProgress.total} observed · ${escapeHtml(liveProgress.redId)} vs ${escapeHtml(liveProgress.blueId)}<br><small>Schedule ${liveProgress.scheduleIndex} · ${escapeHtml(formatProgressTimestamp(liveProgress.observedAt))}</small></div>` : ""}</div>`
             : '<div class="progress-card empty-progress"><b>Ready for configuration</b><span>Review controls and interventions before starting the next generation.</span></div>'}
           <div class="run-actions" aria-label="Generation execution controls">
             <button id="run-next-button" type="button" ${runControls.runNextDisabled ? "disabled" : ""}>Run next generation</button>
@@ -102,6 +103,7 @@ export function renderLabShell(state, {
             <button id="stop-run-button" class="ghost" type="button" ${runControls.stopDisabled ? "disabled" : ""}>Stop at generation boundary</button>
           </div>
           ${runOperation.status === "pause_requested" ? '<p class="operation-status" role="status">Pause requested; finishing the current game and saving its checkpoint.</p>' : ""}
+          ${runControls.paused && runOperation.status !== "pause_requested" ? '<p class="operation-status" role="status"><b>Execution is paused.</b> No fights are running. Press Resume to continue from the durable checkpoint.</p>' : ""}
           ${runOperation.status === "failed" ? `<div class="operation-error" role="alert"><b>${runOperation.errorKind === "persistence" ? "Persistence failure" : runOperation.errorKind === "execution" ? "Execution failure" : "Run failure"}</b><span>${escapeHtml(runOperation.errorMessage)}</span>${Number.isSafeInteger(runOperation.safeCursor) ? `<small>Last safe cursor: ${runOperation.safeCursor}</small>` : ""}</div>` : ""}
         </section>
         <section class="control-panel" id="ecology"><div><p class="eyebrow">Ecology draft</p><h2>Generation controls</h2>

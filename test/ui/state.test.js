@@ -109,6 +109,29 @@ test("durable progress renders phase, safe cursor, and checkpoint metadata", () 
   assert.match(html, /2026-08-29 12:30:00 UTC/);
 });
 
+test("running progress renders live worker fight diagnostics", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 4, schedule: Array(10).fill({}), completedLedger: [] },
+    liveProgress: { completed: 6, total: 10, scheduleIndex: 5, redId: "RED-1", blueId: "BLUE-2",
+      observedAt: "2026-08-30T13:00:00.000Z" }
+  });
+  assert.match(html, /Worker activity/);
+  assert.match(html, /Fight 6 of 10 observed/);
+  assert.match(html, /RED-1 vs BLUE-2/);
+  assert.match(html, /Schedule 5/);
+});
+
+test("stored progress clearly says when no fights are running", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 371, schedule: Array(400).fill({}), completedLedger: [] }
+  });
+  assert.match(html, /Execution is paused/);
+  assert.match(html, /No fights are running/);
+  assert.match(html, /Press Resume/);
+});
+
 test("run controls render phase-aware actions and escaped failure details", () => {
   const html = renderLabShell(createLabState({ runs, generations }), {
     controlReview: { controls: { workerCount: 1, migrationEnabled: false, wildcardProbability: 0, mutationProbability: 0 }, controlsHash: "hash" },

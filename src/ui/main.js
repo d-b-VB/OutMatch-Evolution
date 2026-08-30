@@ -32,6 +32,7 @@ let matchup = { redId: null, blueId: null, history: null, replays: [], selectedR
 let runOperation = createRunOperation();
 let runController;
 let evolutionResources;
+let liveProgress;
 
 function selectedReportView() {
   const generation = state.generations.find(item => item.runId === state.selectedRunId
@@ -79,6 +80,7 @@ function nextBreedingSeed(parent) {
 async function completeRunResult(result) {
   progress = result.checkpoint ?? null;
   if (result.status !== "complete") return result;
+  liveProgress = null;
   await refresh(state.selectedRunId);
   state = selectGeneration(state, result.generation.generation);
   settings = await persistLabSelection(repositories.settings, state, settings);
@@ -93,6 +95,7 @@ async function completeRunResult(result) {
 async function runOneGeneration() {
   const parent = selectedGenerationRecord();
   if (!parent || !controlReview) throw new Error("Select a parent and review controls before running");
+  liveProgress = null;
   return completeRunResult(await runController.start({
     runId: state.selectedRunId, parent, controlReview, breedingSeed: nextBreedingSeed(parent),
     breedingPrngVersion: parent.checkpoint?.breedingPrngVersion ?? "splitmix64-v1"
@@ -111,7 +114,7 @@ async function refresh(preferredRunId = null) {
 
 function paint() {
   root.innerHTML = renderLabShell(state, {
-    notice, storage, draftControls, controlReview, progress, selectedReportId, populationOptions, matchup, runOperation
+    notice, storage, draftControls, controlReview, progress, liveProgress, selectedReportId, populationOptions, matchup, runOperation
   });
   const runSelect = root.querySelector("#run-select");
   const generationSelect = root.querySelector("#generation-select");
@@ -155,7 +158,7 @@ function paint() {
   root.querySelector("#pause-run-button")?.addEventListener("click", () => { runController.requestPause(); paint(); });
   root.querySelector("#stop-run-button")?.addEventListener("click", () => { runController.stopAfterGeneration(); paint(); });
   root.querySelector("#resume-run-button")?.addEventListener("click", async () => {
-    try { await completeRunResult(await runController.resume({ runId: state.selectedRunId })); paint(); }
+    try { liveProgress = null; await completeRunResult(await runController.resume({ runId: state.selectedRunId })); paint(); }
     catch (error) { notice = { kind: "error", message: error.message }; paint(); }
   });
   const updateMatchup = async color => {
@@ -358,6 +361,12 @@ async function bootstrap() {
       database,
       progressRepository: repositories.progress,
       onCheckpoint: checkpoint => { progress = checkpoint; paint(); },
+      onLiveProgress: update => {
+        liveProgress = update;
+        const remaining = update.total - update.completed;
+        if (update.completed <= 8 || update.completed % 25 === 0
+          || (remaining > 0 && (remaining & (remaining - 1)) === 0)) paint();
+      },
       prepareGeneration: productionContext,
       restoreGeneration: async checkpoint => {
         const review = settings?.controlReview;

@@ -113,6 +113,7 @@ export class BrowserRunService {
     runStages = runDurableTournamentStages,
     finalize = finalizeDurableTournament,
     onCheckpoint = () => {},
+    onLiveProgress = () => {},
     now = () => new Date().toISOString()
   }) {
     if (!database || typeof progressRepository?.get !== "function" || typeof progressRepository?.save !== "function") {
@@ -128,6 +129,7 @@ export class BrowserRunService {
     this.runStages = runStages;
     this.finalize = finalize;
     this.onCheckpoint = onCheckpoint;
+    this.onLiveProgress = onLiveProgress;
     this.now = now;
     this.pauseRequested = false;
     this.stopRequested = false;
@@ -185,9 +187,16 @@ export class BrowserRunService {
         createWorker: this.createWorker, engineOptions: prepared.engineOptions
       }))[0];
       const batchSize = Math.max(1, prepared.workerCount ?? 1);
+      let liveCompleted = checkpoint.cursor;
+      let liveTotal = checkpoint.schedule.length;
       const executeBatch = this.workerSchedule === runWorkerSchedule ? schedule => this.workerSchedule({
         schedule, genomes, workerCount: prepared.workerCount ?? 1,
-        createWorker: this.createWorker, engineOptions: prepared.engineOptions
+        createWorker: this.createWorker, engineOptions: prepared.engineOptions,
+        onProgress: event => {
+          liveCompleted += 1;
+          this.onLiveProgress({ ...event, completed: liveCompleted, total: liveTotal,
+            observedAt: this.now() });
+        }
       }) : undefined;
       const result = await this.runStages({
         checkpoint,
@@ -197,6 +206,8 @@ export class BrowserRunService {
         checkpointInterval: executeBatch ? batchSize : 1,
         saveCheckpoint: async value => {
           await this.progressRepository.save(value);
+          liveCompleted = value.cursor;
+          liveTotal = value.schedule.length;
           this.onCheckpoint(structuredClone(value));
         },
         shouldPause: () => this.pauseRequested,
