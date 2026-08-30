@@ -14,6 +14,7 @@ import { openModalWithFocusReturn } from "./accessibility.js";
 import { prepareProductionGeneration } from "./production-run.js";
 import { BrowserRunService } from "./run-service.js";
 import { createRunOperation, RunOperationController } from "./run-operation.js";
+import { loadCanonicalR29 } from "../baseline/runtime.js";
 
 const root = document.querySelector("#app");
 let state;
@@ -249,7 +250,9 @@ function paint() {
     event.preventDefault();
     try {
       const data = new FormData(event.currentTarget);
-      const run = await createLabRun({ runRepository: repositories.runs, runId: data.get("runId"), title: data.get("title") });
+      const runId = data.get("runId");
+      const baseline = await loadCanonicalR29(runId);
+      const run = await createLabRun({ database, baseline, runRepository: repositories.runs, runId, title: data.get("title") });
       await refresh(run.runId); settings = await persistLabSelection(repositories.settings, state, settings);
       notice = { kind: "success", message: `Created ${run.title}.` }; newDialog.close(); paint();
     } catch (error) { notice = { kind: "error", message: error.message }; newDialog.close(); paint(); }
