@@ -68,6 +68,23 @@ test("migrant provenance records source, destination, and insertion-cycle restri
   assert.equal(records[0].genome.population, "horse_lords");
 });
 
+test("manual copies clone their source genome under an audited identity", () => {
+  const records = assemblePopulation({
+    population: "pike_hunters",
+    residents: [{
+      id: "copied-general", sourceId: "generalists-1", name: "Copied General", origin: "manual_copy",
+      sourcePopulation: "generalists", destinationPopulation: "pike_hunters", breedingEligible: false
+    }],
+    births: [], parentGenomes, rosterSize: 1
+  });
+  assert.deepEqual(records[0].genome, {
+    ...parentGenomes.get("generalists-1"), id: "copied-general", name: "Copied General", population: "pike_hunters"
+  });
+  assert.deepEqual(records[0].provenance, {
+    origin: "manual_copy", sourceId: "generalists-1", breedingEligible: false
+  });
+});
+
 test("generation metadata advances R29 to deterministic R30 values", () => {
   assert.deepEqual(advanceGenerationMetadata({
     generation: "ReachR29", breedingSeed: "202608231655", nextRecruitingPopulation: "horse_hunters",
@@ -160,4 +177,28 @@ test("default-size generation assembly produces 343 validated deterministic geno
   assert.equal(first.fingerprint, second.fingerprint);
   assert.equal(first.fingerprint, "fnv1a64:dcc14f93d7c7ce2e");
   assert.equal(validateChildGeneration(first), first);
+});
+
+test("generation mutation control rescales ordinary and self-cross births deterministically", () => {
+  const checkpoint = JSON.parse(readFileSync("seed/r29/Reach_R29_Complete_Checkpoint.json", "utf8"));
+  const baseline = JSON.parse(readFileSync("seed/genetic_similarity_baseline_r29.json", "utf8"));
+  const mutationRanges = validateMutationRanges(JSON.parse(readFileSync("seed/mutation_ranges.json", "utf8")), baseline.locusOrder);
+  const selected = R29_POPULATIONS.flatMap(population => checkpoint.population.filter(genome => genome.population === population).slice(0, 3));
+  const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population,
+    selected.filter(genome => genome.population === population).map((genome, index) => ({ id: genome.id, rank: index + 1 }))]));
+  const options = {
+    parentMetadata: {
+      generation: "ReachR29", breedingSeed: "202608231655", nextRecruitingPopulation: "horse_hunters",
+      engineRulesVersion: "reach-v1", fitnessFormulaVersion: "reach-fitness-v1", breedingPrngVersion: "splitmix64-v1"
+    },
+    rankings, parentGenomes: new Map(selected.map(genome => [genome.id, genome])),
+    locusOrder: baseline.locusOrder, mutationRanges, rosterSize: 8, survivorSlots: 2,
+    wildcardSlots: 0, mutationProbability: 0.02
+  };
+  const first = buildNextGeneration(options);
+  const second = buildNextGeneration(options);
+  const defaultMutation = buildNextGeneration({ ...options, mutationProbability: 0.05 });
+  assert.equal(first.fingerprint, second.fingerprint);
+  assert.notEqual(first.fingerprint, defaultMutation.fingerprint);
+  assert.throws(() => buildNextGeneration({ ...options, mutationProbability: 1.1 }), /between 0 and 1/);
 });

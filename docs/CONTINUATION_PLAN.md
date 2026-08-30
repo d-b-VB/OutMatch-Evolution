@@ -14,7 +14,7 @@ This document is the handoff point for a fresh Codex session. Read `TASKS.md`, `
 
 ## Remaining batches
 
-### Batch 6.1 — browser run service
+### Batch 6.1 — browser run service — complete
 
 Create a UI-facing application service rather than adding orchestration logic to `src/ui/main.js`.
 
@@ -33,7 +33,15 @@ Acceptance:
 - Pause/reopen/resume returns the same ledger and child fingerprint as uninterrupted execution.
 - UI code contains no duplicate tournament state machine.
 
-### Batch 6.2 — run controls and live feedback
+Implemented in `src/ui/run-service.js`. The service creates the first durable
+checkpoint from reviewed, separately hashed inputs; binds canonical tournament
+hooks and browser Worker execution; and owns start, pause, reopen/resume, and
+generation-boundary stop requests. Reduced-generation integration coverage
+checks the single final commit and pause/reopen determinism. A fresh service can
+now reconstruct its deterministic hooks through `restoreGeneration`, and rejects
+a restored child candidate that differs from the durable checkpoint.
+
+### Batch 6.2 — run controls and live feedback — core complete
 
 Deliverables:
 
@@ -47,7 +55,13 @@ Acceptance:
 - Button-state tests cover idle, running, pause-requested, paused, finalizing, and failed states.
 - Reloading while paused displays a resumable operation without replaying games.
 
-### Batch 6.3 — populations and lineage
+The lab now derives all execution-button availability from a tested operation
+model and durable progress, distinguishes execution from persistence failures,
+and displays the last safe cursor. DOM wiring to a production generation
+preparer remains part of the browser integration work; controls stay disabled
+until a selected immutable parent and reviewed draft make starting safe.
+
+### Batch 6.3 — populations and lineage — complete
 
 Deliverables:
 
@@ -61,7 +75,11 @@ Acceptance:
 - Population counts always total 49 per population for complete generations.
 - All stored text is escaped and no genome/provenance object is mutated by sorting or filtering.
 
-### Batch 6.4 — report-specific views
+Implemented with immutable population adapters, seven checkpoint summaries,
+multi-field filtering and sorting, expandable genome/provenance detail, and a
+validator-backed path from the selected general to an intervention draft.
+
+### Batch 6.4 — report-specific views — complete
 
 The generic immutable viewer and matrix CSV support already exist. Extend it without recalculating archived reports.
 
@@ -76,7 +94,12 @@ Acceptance:
 - UI adapters reproduce values already stored in the generation record.
 - CSV tests cover escaping, nulls, ordering, and report-specific columns.
 
-### Batch 6.5 — matchups and deterministic replay
+Archived elimination, similarity, unit-rate, ranking, migration, and breeding
+records now receive dedicated tabular adapters and CSV output. When the prior
+immutable generation is available, the comparison view shows stable numeric
+deltas derived only from values already stored in both records.
+
+### Batch 6.5 — matchups and deterministic replay — complete
 
 Deliverables:
 
@@ -91,6 +114,11 @@ Acceptance:
 - Exhibition rows cannot be written to generation ledgers.
 - Replaying the same stored trace produces the same board sequence.
 
+Exhibitions now use a distinct Worker request/result type, explicit red and blue
+selection, and the replay repository rather than generation ledgers. Stored
+action traces include immutable board frames, while historical summaries remain
+clearly labeled as evolutionary ledger data.
+
 ### Batch 6.6 — browser acceptance and accessibility
 
 Deliverables:
@@ -103,6 +131,18 @@ Acceptance:
 
 - `npm test`, all focused verification scripts, and browser tests pass.
 - No horizontal page overflow at the phone breakpoint; wide tables scroll within their own containers.
+
+Accessibility groundwork now includes skip navigation, visible keyboard focus,
+labeled dialogs with focus return, live execution status, and keyboard-focusable
+wide tables. `npm run verify:browser` provides a dependency-free Chromium smoke
+check and desktop/phone screenshot capture. Its in-browser acceptance page now
+exercises IndexedDB upgrade/reopen, a real module Worker game, `.omgen`
+export/import, Blob download construction, and an actual document reload between
+a persisted pause and deterministic resume. This batch remains open until an
+environment with Chromium runs those checks. A deterministic visual scenario now
+scripts dashboard, active-run, report, population, and replay captures at both
+breakpoints. The acceptance page also checks phone-width overflow, skip-link
+focus, and dialog focus entry/return.
 
 ### Batch 7.1 — consolidated acceptance
 
@@ -135,9 +175,10 @@ npm run build
 
 ## Known gaps and cautions
 
-- The progress panel reads durable checkpoints but does not yet start or resume the coordinator.
-- Current report rendering is generic except for matrix tables; dedicated report semantics remain.
-- Manual move and copy-entrant drafts are validated and hashed, but applying them to child resident pools belongs in the browser run service batch. The advanced replacement/upload operation is still pending.
-- There is no populations screen, matchup launcher, or replay board yet.
+- The production DOM still does not instantiate `BrowserRunService` with a real generation preparer, so visible run buttons do not yet start or resume the coordinator.
+- Manual moves and copy entrants now enter child resident pools as audited, non-breeding residents; production wiring must pass the reviewed intervention document into generation assembly. The advanced replacement/upload operation is still pending.
+- The reviewed mutation probability is now consumed by generation breeding for ordinary and self-cross births; preserve its deterministic rescaling when wiring the production preparer.
+- Automatic migration planning now evaluates every outsider only against the generation's canonical recruiting population and returns both the audited candidates and selected entrants.
+- Replay rendering currently exposes the stored frame data rather than a graphical Reach board.
 - The build copies static files and has not been validated under a GitHub Pages project subpath.
-- Node tests use injected IndexedDB and Worker doubles; real-browser acceptance remains mandatory.
+- Native browser acceptance is scripted but still must pass in a Chromium-equipped environment.

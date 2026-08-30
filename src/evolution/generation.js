@@ -2,9 +2,11 @@ import { R29_POPULATIONS } from "../baseline/checkpoint.js";
 import { flattenGenomeLoci } from "../baseline/checkpoint.js";
 import {
   breedChild,
-  planParentPairs
+  DEFAULT_ORDINARY_INHERITANCE,
+  planParentPairs,
+  rescaleMutationProbability
 } from "./breeding.js";
-import { applyMigrationToResidentPools, nextRecruitingPopulation, validateMigrationResidentPools } from "./migration.js";
+import { applyMigrationToResidentPools, nextRecruitingPopulation, planManualPopulationInterventions, validateMigrationResidentPools } from "./migration.js";
 import { SplitMix64 } from "./prng.js";
 import { activateWildcardSlots, applyWildcardsToBirthPlan, generateWildcardGenome } from "./wildcards.js";
 
@@ -36,7 +38,7 @@ export function assemblePopulation({ population, residents, births, parentGenome
     const source = parentGenomes.get(resident.sourceId ?? resident.id);
     if (source === undefined) throw new Error(`Missing resident genome: ${resident.id}`);
     return {
-      genome: { ...source, id: resident.id, population },
+      genome: { ...source, id: resident.id, population, ...(resident.name ? { name: resident.name } : {}) },
       provenance: residentProvenance(resident, source)
     };
   });
@@ -128,16 +130,24 @@ export function buildNextGeneration({
   rankings,
   parentGenomes,
   migrants = [],
+  interventions = [],
   locusOrder,
   mutationRanges,
   rosterSize = 49,
   survivorSlots = 14,
   wildcardSlots = 5,
-  wildcardProbability = 0.5
+  wildcardProbability = 0.5,
+  mutationProbability = DEFAULT_ORDINARY_INHERITANCE.mutation
 }) {
+  if (!Number.isFinite(mutationProbability) || mutationProbability < 0 || mutationProbability > 1) {
+    throw new Error("Generation mutation probability must be between 0 and 1");
+  }
   const metadata = advanceGenerationMetadata(parentMetadata);
   const random = new SplitMix64(metadata.breedingSeed);
-  const pools = applyMigrationToResidentPools(rankings, migrants, survivorSlots);
+  const ordinaryProbabilities = rescaleMutationProbability(DEFAULT_ORDINARY_INHERITANCE, mutationProbability);
+  const selfProbabilities = { parent: 1 - mutationProbability, mutation: mutationProbability };
+  const manualEntrants = planManualPopulationInterventions(interventions, parentGenomes);
+  const pools = applyMigrationToResidentPools(rankings, [...migrants, ...manualEntrants], survivorSlots);
   validateMigrationResidentPools(pools, survivorSlots);
   const plans = {};
   for (const population of R29_POPULATIONS) {
@@ -161,7 +171,9 @@ export function buildNextGeneration({
         mother: parentGenomes.get(item.mother.id),
         locusOrder,
         mutationRanges,
-        random
+        random,
+        ordinaryProbabilities,
+        selfProbabilities
       });
       result.provenance.origin = "cross";
       result.provenance.parentSelection = item.kind;
