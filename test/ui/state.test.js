@@ -90,6 +90,9 @@ test("intervention queue renders audited move and copy operations safely", () =>
   assert.match(html, /Move &lt;review&gt;/);
   assert.match(html, /remove-intervention/);
   assert.match(html, /intervention-dialog/);
+  assert.match(html, /Replace with uploaded genome/);
+  assert.match(html, /name="genomeFile" type="file" accept="\.json,application\/json"/);
+  assert.match(html, /maximum 1 MB/);
 });
 
 test("durable progress renders phase, safe cursor, and checkpoint metadata", () => {
@@ -106,6 +109,23 @@ test("durable progress renders phase, safe cursor, and checkpoint metadata", () 
   assert.match(html, /2026-08-29 12:30:00 UTC/);
 });
 
+test("run controls render phase-aware actions and escaped failure details", () => {
+  const html = renderLabShell(createLabState({ runs, generations }), {
+    controlReview: { controls: { workerCount: 1, migrationEnabled: false, wildcardProbability: 0, mutationProbability: 0 }, controlsHash: "hash" },
+    runOperation: {
+      status: "failed", errorKind: "persistence", errorMessage: "write <failed>",
+      safeCursor: 12, stopRequested: false
+    }
+  });
+  assert.match(html, /Run next generation/);
+  assert.match(html, /Run N generations/);
+  assert.match(html, /Pause after current game/);
+  assert.match(html, /Persistence failure/);
+  assert.match(html, /Last safe cursor: 12/);
+  assert.doesNotMatch(html, /write <failed>/);
+  assert.match(html, /write &lt;failed&gt;/);
+});
+
 test("archived report matrices render with safe download controls", () => {
   const reportGeneration = {
     ...generations[0], reports: { elimination: { matrix: {
@@ -119,4 +139,55 @@ test("archived report matrices render with safe download controls", () => {
   assert.match(html, /<td>0.250<\/td>/);
   assert.match(html, /report-json/);
   assert.match(html, /report-csv/);
+});
+
+test("population browser escapes archived lineage and renders independent detail", () => {
+  const populationGeneration = {
+    ...generations[0],
+    checkpoint: {
+      population: [{ id: "G<1>", name: "<General>", population: "generalists", genes: { value: "<gene>" } }],
+      provenance: { "G<1>": { origin: "cross", fatherId: "F<1>", motherId: "M&2" } }
+    },
+    rankings: [{ id: "G<1>", rank: 1, fitness: 12, kills: 3 }]
+  };
+  const html = renderLabShell(createLabState({ runs, generations: [populationGeneration] }), {
+    populationOptions: { selectedId: "G<1>" }
+  });
+  assert.match(html, /Populations/);
+  assert.match(html, /&lt;General&gt;/);
+  assert.match(html, /F&lt;1&gt; × M&amp;2/);
+  assert.match(html, /Fitness & unit behavior/);
+  assert.match(html, /&lt;gene&gt;/);
+  assert.doesNotMatch(html, /<General>/);
+});
+
+test("matchups label historical and exhibition data and render stored replay frames", () => {
+  const matchupGeneration = {
+    ...generations[0], checkpoint: { population: [
+      { id: "A<1>", population: "generalists", genes: {} },
+      { id: "B&2", population: "pike_lords", genes: {} }
+    ] }
+  };
+  const selectedReplay = {
+    replayId: "replay<1>", game: {
+      kind: "exhibition", redId: "A<1>", blueId: "B&2",
+      replay: { actions: [{ kind: "move", unitId: "R1" }], frames: [
+        { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-3, 0] }] },
+        { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-2, 0] }] }
+      ] }
+    }
+  };
+  const html = renderLabShell(createLabState({ runs, generations: [matchupGeneration] }), {
+    matchup: {
+      redId: "A<1>", blueId: "B&2", replays: [selectedReplay], selectedReplay,
+      history: { games: 2, wins: { "A<1>": 1, "B&2": 0, draws: 1 } }
+    }
+  });
+  assert.match(html, /Historical · evolutionary ledger/);
+  assert.match(html, /Exhibition · separate replay store/);
+  assert.match(html, /Frame 1 of 2/);
+  assert.match(html, /aria-label="Reach board at replay frame 1"/);
+  assert.match(html, /Initial board state/);
+  assert.match(html, /A&lt;1&gt; vs B&amp;2/);
+  assert.doesNotMatch(html, /A<1>/);
 });
