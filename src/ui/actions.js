@@ -2,6 +2,7 @@ import { PERSISTENCE_SCHEMAS } from "../persistence/schema.js";
 import { commitOmgenImport, createOmgenImportPlan, inspectOmgenImport } from "../portable/import.js";
 import { exportOmgen } from "../portable/archive.js";
 import { deleteRunData } from "../persistence/repositories.js";
+import { initializeRunWithGeneration } from "../persistence/repositories.js";
 import { inspectStorage } from "../persistence/storage.js";
 import { validateLabControls } from "./controls.js";
 
@@ -11,12 +12,13 @@ function required(value, label) {
   return normalized;
 }
 
-export async function createLabRun({ runRepository, title, runId, now = () => new Date().toISOString() }) {
+export async function createLabRun({ runRepository, database, baseline, title, runId, now = () => new Date().toISOString() }) {
   const record = {
     schema: PERSISTENCE_SCHEMAS.run, runId: required(runId, "Run ID"), title: required(title, "Run title"),
     createdAt: now(), activeGeneration: "ReachR29", originatingGeneration: "ReachR29"
   };
-  await runRepository.save(record);
+  if (database && baseline) await initializeRunWithGeneration(database, record, baseline.generation, baseline.ledger);
+  else await runRepository.save(record);
   return record;
 }
 
