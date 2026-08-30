@@ -46,3 +46,11 @@ The native Chromium acceptance run is reported passing in CI. Browser screenshot
 are retained with the workflow run, and deployment remains gated on the same
 `verify:pages` command. Repository owners should review those artifacts and the
 deployed URL as the final release sign-off rather than committing generated files.
+
+## Tagged releases
+
+Before creating a tag, update `package.json` and `CHANGELOG.md`, then run
+`npm run verify:version`. Pushing a matching `v<version>` tag runs Node, fixture,
+and built-site Chromium verification before publishing compressed `dist` and
+browser-evidence archives to a GitHub release. A mismatched tag, missing
+changelog entry, failed test, or failed browser gate prevents publication.

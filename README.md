@@ -94,6 +94,11 @@ site, retains browser screenshots, uploads `dist`, and deploys on `main` or
 manual dispatch. Repository setup and clean-clone reproduction are documented in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
+Versioned tags matching `package.json` (for example `v0.1.0`) run the release
+workflow after the full built-site browser gate. Each GitHub release includes a
+compressed static site and its Chromium screenshot evidence. Release history is
+recorded in [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Architecture and specifications
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — subsystem boundaries and data flow.
