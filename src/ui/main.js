@@ -357,6 +357,7 @@ async function bootstrap() {
     const runService = new BrowserRunService({
       database,
       progressRepository: repositories.progress,
+      onCheckpoint: checkpoint => { progress = checkpoint; paint(); },
       prepareGeneration: productionContext,
       restoreGeneration: async checkpoint => {
         const review = settings?.controlReview;
