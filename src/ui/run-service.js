@@ -18,6 +18,15 @@ function nextGeneration(parentGeneration) {
   return `ReachR${Number(match[1]) + 1}`;
 }
 
+function validateReviewedInputs(parent, controlReview) {
+  if (!controlReview?.controls || !controlReview.controlsHash || !controlReview.interventionsHash) {
+    throw new Error("Controls and interventions must be reviewed before starting");
+  }
+  if (controlReview.interventions?.parentGeneration !== parent?.generation) {
+    throw new Error("Interventions are not bound to the selected parent generation");
+  }
+}
+
 /** Construct the first durable record only from reviewed deterministic inputs. */
 export function buildInitialRunProgress({
   runId,
@@ -29,12 +38,7 @@ export function buildInitialRunProgress({
   stage1Schedule,
   now = () => new Date().toISOString()
 }) {
-  if (!controlReview?.controls || !controlReview.controlsHash || !controlReview.interventionsHash) {
-    throw new Error("Controls and interventions must be reviewed before starting");
-  }
-  if (controlReview.interventions?.parentGeneration !== parent?.generation) {
-    throw new Error("Interventions are not bound to the selected parent generation");
-  }
+  validateReviewedInputs(parent, controlReview);
   if (!Array.isArray(stage1Schedule) || childCandidate === null || typeof childCandidate !== "object") {
     throw new Error("Prepared generation must include a child candidate and Stage 1 schedule");
   }
@@ -59,6 +63,13 @@ function checkpointIdentity(checkpoint) {
     "runId", "parentGeneration", "parentFingerprint", "targetGeneration", "controlsHash",
     "interventionsHash", "breedingSeed", "breedingPrngVersion"
   ].map(key => [key, checkpoint[key]]));
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") return `{${Object.keys(value).sort()
+    .map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`;
+  return JSON.stringify(value);
 }
 
 /** Bind the canonical ranking, Stage 2, and challenger planners for a prepared population. */
@@ -96,6 +107,7 @@ export class BrowserRunService {
     database,
     progressRepository,
     prepareGeneration,
+    restoreGeneration,
     createWorker,
     workerSchedule = runWorkerSchedule,
     runStages = runDurableTournamentStages,
@@ -109,6 +121,7 @@ export class BrowserRunService {
     this.database = database;
     this.progressRepository = progressRepository;
     this.prepareGeneration = prepareGeneration;
+    this.restoreGeneration = restoreGeneration;
     this.createWorker = createWorker;
     this.workerSchedule = workerSchedule;
     this.runStages = runStages;
@@ -127,6 +140,7 @@ export class BrowserRunService {
   async start({ runId, parent, controlReview, breedingSeed, breedingPrngVersion = PRNG_VERSION }) {
     if (this.active) throw new Error("A generation operation is already active");
     if (await this.progressRepository.get(runId)) throw new Error("Run already has durable progress; resume it instead");
+    validateReviewedInputs(parent, controlReview);
     const prepared = await this.prepareGeneration({
       runId, parent: structuredClone(parent), controlReview: structuredClone(controlReview),
       breedingSeed, breedingPrngVersion
@@ -144,8 +158,13 @@ export class BrowserRunService {
     if (this.active) throw new Error("A generation operation is already active");
     const checkpoint = await this.progressRepository.get(runId);
     if (!checkpoint) throw new Error("Run has no durable progress to resume");
-    const context = prepared ?? this.contexts.get(runId);
-    if (!context) throw new Error("Resume requires deterministic generation hooks");
+    const context = prepared ?? this.contexts.get(runId)
+      ?? (typeof this.restoreGeneration === "function" ? await this.restoreGeneration(structuredClone(checkpoint)) : null);
+    if (!context) throw new Error("Resume requires a deterministic generation restorer after reload");
+    const restoredCandidate = context.childCandidate;
+    if (restoredCandidate && canonical(restoredCandidate) !== canonical(checkpoint.childCandidate)) {
+      throw new Error("Restored generation candidate does not match durable progress");
+    }
     this.contexts.set(runId, context);
     this.pauseRequested = false;
     return this.#drive(checkpoint, context);

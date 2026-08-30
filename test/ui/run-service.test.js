@@ -121,6 +121,44 @@ test("pause, reopen, and resume preserves ledger and child fingerprint", async (
   assert.equal(commits.length, 1);
 });
 
+test("a fresh service restores deterministic hooks from the durable checkpoint", async () => {
+  const commits = [];
+  const progress = new MemoryProgress();
+  const context = prepared(commits);
+  let firstService;
+  let calls = 0;
+  firstService = service(progress, context, { workerSchedule: async options => {
+    const rows = await workerSchedule(options);
+    calls += 1;
+    if (calls === 1) firstService.requestPause();
+    return rows;
+  } });
+  await firstService.start({ runId: "run-one", parent, controlReview, breedingSeed: "seed-one" });
+
+  const restored = [];
+  const reopened = service(progress, null, {
+    prepareGeneration: async () => { throw new Error("start preparer must not run during resume"); },
+    restoreGeneration: async checkpoint => { restored.push(checkpoint); return context; }
+  });
+  const result = await reopened.resume({ runId: "run-one" });
+  assert.equal(result.status, "complete");
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].cursor, 1);
+  assert.equal(commits.length, 1);
+});
+
+test("reload restoration rejects a different child candidate", async () => {
+  const progress = new MemoryProgress(buildInitialRunProgress({
+    runId: "run-one", parent, controlReview, breedingSeed: "seed-one",
+    childCandidate: { population: [], fingerprint: "expected" }, stage1Schedule: games,
+    now: () => "2026-08-29T00:00:00.000Z"
+  }));
+  const reopened = service(progress, null, {
+    restoreGeneration: async () => ({ ...prepared([]), childCandidate: { population: [], fingerprint: "different" } })
+  });
+  await assert.rejects(reopened.resume({ runId: "run-one" }), /does not match durable progress/);
+});
+
 test("start guards reviewed inputs and existing progress", async () => {
   const context = prepared([]);
   await assert.rejects(service(new MemoryProgress({ runId: "existing" }), context).start({

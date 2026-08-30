@@ -27,9 +27,14 @@ try {
   if (!acceptance.includes('data-status="passed"')) throw new Error(`Browser acceptance failed:\n${acceptance}`);
   await mkdir("artifacts/browser", { recursive: true });
   for (const viewport of [{ name: "desktop", size: "1440,1000" }, { name: "phone", size: "390,844" }]) {
-    chromium([`--window-size=${viewport.size}`, `--screenshot=artifacts/browser/dashboard-${viewport.name}.png`, "http://127.0.0.1:4173/"]);
-    const bytes = await readFile(`artifacts/browser/dashboard-${viewport.name}.png`);
-    if (bytes.length < 1000) throw new Error(`Empty ${viewport.name} screenshot`);
+    for (const screen of [{ name: "dashboard", hash: "#overview" }, { name: "active-run", hash: "#run-progress" },
+      { name: "reports", hash: "#reports" }, { name: "populations", hash: "#populations" },
+      { name: "replay", hash: "#replays" }]) {
+      const path = `artifacts/browser/${screen.name}-${viewport.name}.png`;
+      chromium([`--window-size=${viewport.size}`, `--screenshot=${path}`, `http://127.0.0.1:4173/browser-acceptance/scenarios.html${screen.hash}`]);
+      const bytes = await readFile(path);
+      if (bytes.length < 1000) throw new Error(`Empty ${screen.name} ${viewport.name} screenshot`);
+    }
   }
 } finally {
   server.kill("SIGTERM");
