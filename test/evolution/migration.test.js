@@ -130,3 +130,19 @@ test("manual copies retain their source while moves leave their source populatio
     ["pike_lords-1", "manual_migrant", "pike_lords-1"], ["copy", "manual_copy", "horse_lords-1"]
   ]);
 });
+
+test("replacement uploads evict one resident and retain the audited uploaded genome", () => {
+  const rankings = Object.fromEntries(R29_POPULATIONS.map(population => [population,
+    Array.from({ length: 4 }, (_, index) => ({ id: `${population}-${index + 1}`, rank: index + 1 }))]));
+  const uploadedGenome = { id: "uploaded", name: "Uploaded", population: "horse_lords", genes: { value: 1 } };
+  const parentGenomes = new Map([["horse_lords-1", { id: "horse_lords-1", population: "horse_lords" }]]);
+  const [entrant] = planManualPopulationInterventions([{
+    type: "replacement-upload", replacesGeneralId: "horse_lords-1", to: "horse_lords",
+    genome: uploadedGenome, note: "replace"
+  }], parentGenomes);
+  const pools = applyMigrationToResidentPools(rankings, [entrant], 3);
+  assert.ok(!pools.horse_lords.some(entry => entry.id === "horse_lords-1"));
+  assert.equal(pools.horse_lords[0].id, "uploaded");
+  assert.deepEqual(pools.horse_lords[0].genome, uploadedGenome);
+  assert.equal(pools.horse_lords[0].breedingEligible, false);
+});

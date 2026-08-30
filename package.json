@@ -1,8 +1,12 @@
 {
   "name": "outmatch-reach-evolution",
   "version": "0.1.0",
+  "description": "Local-first deterministic evolution and audit lab for OutMatch Reach",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node scripts/dev-server.mjs",
     "build": "node scripts/build.mjs",
@@ -14,6 +18,9 @@
     "verify:step5": "node --test test/portable/*.test.js",
     "verify:step6": "node --test test/ui/*.test.js",
     "verify:browser": "node scripts/browser-smoke.mjs",
+    "verify:pages": "npm run build && SERVE_ROOT=dist BASE_PATH=/OutMatch-Evolution node scripts/browser-smoke.mjs",
+    "verify:fixtures": "node scripts/verify-fixtures.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
     "verify:golden": "node scripts/verify-golden.mjs"
   }
 }

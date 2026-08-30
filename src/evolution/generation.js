@@ -23,6 +23,9 @@ function residentProvenance(resident, sourceGenome) {
   if (resident.origin === "manual_copy") {
     return { origin: "manual_copy", sourceId: resident.sourceId, breedingEligible: false };
   }
+  if (resident.origin === "manual_replacement") {
+    return { origin: "manual_replacement", sourceId: sourceGenome.id, replacedId: resident.replacesId, breedingEligible: false };
+  }
   return { origin: "survivor", sourceId: sourceGenome.id, breedingEligible: true };
 }
 
@@ -35,7 +38,7 @@ export function assemblePopulation({ population, residents, births, parentGenome
     throw new Error(`${population} assembly has ${residents.length + births.length} genomes; expected ${rosterSize}`);
   }
   const records = residents.map(resident => {
-    const source = parentGenomes.get(resident.sourceId ?? resident.id);
+    const source = resident.genome ?? parentGenomes.get(resident.sourceId ?? resident.id);
     if (source === undefined) throw new Error(`Missing resident genome: ${resident.id}`);
     return {
       genome: { ...source, id: resident.id, population, ...(resident.name ? { name: resident.name } : {}) },

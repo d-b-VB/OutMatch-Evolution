@@ -85,6 +85,20 @@ test("manual copies clone their source genome under an audited identity", () => 
   });
 });
 
+test("manual replacements assemble the uploaded genome with non-breeding provenance", () => {
+  const genome = { id: "uploaded", name: "Uploaded", population: "pike_hunters", genes: { value: 42 } };
+  const records = assemblePopulation({
+    population: "pike_hunters", residents: [{
+      id: genome.id, sourceId: genome.id, replacesId: "pike_hunters-1", genome,
+      origin: "manual_replacement", breedingEligible: false
+    }], births: [], parentGenomes, rosterSize: 1
+  });
+  assert.deepEqual(records[0].genome, genome);
+  assert.deepEqual(records[0].provenance, {
+    origin: "manual_replacement", sourceId: "uploaded", replacedId: "pike_hunters-1", breedingEligible: false
+  });
+});
+
 test("generation metadata advances R29 to deterministic R30 values", () => {
   assert.deepEqual(advanceGenerationMetadata({
     generation: "ReachR29", breedingSeed: "202608231655", nextRecruitingPopulation: "horse_hunters",

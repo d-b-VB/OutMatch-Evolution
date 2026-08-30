@@ -8,7 +8,10 @@ const genomes = [
 const replay = {
   replayId: "visual-replay", game: {
     kind: "exhibition", redId: "GL-01", blueId: "PL-01",
-    replay: { actions: [{ kind: "move", unitId: "R1" }], frames: [{ round: 1, units: [] }, { round: 1, units: [{ id: "R1", side: "R" }] }] }
+    replay: { actions: [{ kind: "move", unitId: "R1", destination: [-2, 0] }], frames: [
+      { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-3, 0], active: true }, { id: "B1", side: "B", typ: "C", pos: [3, 0], active: true }] },
+      { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-2, 0], active: false }, { id: "B1", side: "B", typ: "C", pos: [3, 0], active: true }] }
+    ] }
   }
 };
 const generation = {

@@ -6,6 +6,7 @@ import { buildReportView } from "./report-view.js";
 import { createRunOperation, runControlState } from "./run-operation.js";
 import { buildPopulationView } from "./populations.js";
 import { replayBoardSequence } from "./matchups.js";
+import { buildReplayFrameView } from "./replay-view.js";
 
 const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
@@ -18,7 +19,8 @@ function options(items, value, label) {
 function interventionLabel(operation) {
   return operation.type === "manual-move"
     ? `${operation.generalId}: ${operation.from} → ${operation.to}`
-    : `${operation.sourceGeneralId} → ${operation.newId} in ${operation.to}`;
+    : operation.type === "copy-entrant" ? `${operation.sourceGeneralId} → ${operation.newId} in ${operation.to}`
+      : `${operation.replacesGeneralId} → ${operation.genome.id} replacement in ${operation.to}`;
 }
 
 export function renderLabShell(state, {
@@ -37,6 +39,8 @@ export function renderLabShell(state, {
   const populationView = buildPopulationView(generation, populationOptions);
   const matchupGenomes = generation?.checkpoint?.population ?? [];
   const replayFrames = matchup.selectedReplay ? replayBoardSequence(matchup.selectedReplay) : [];
+  const replayView = matchup.selectedReplay
+    ? buildReplayFrameView(replayFrames, matchup.selectedReplay.game.replay.actions, matchup.frameIndex) : null;
   return `
     <div class="lab-shell">
       <a class="skip-link" href="#main-content">Skip to lab content</a>
@@ -125,7 +129,10 @@ export function renderLabShell(state, {
           ${matchupGenomes.length ? `<div class="matchup-card"><div class="matchup-selectors"><label>Red general<select id="matchup-red"><option value="">Choose red</option>${options(matchupGenomes, genome => genome.id, genome => genome.name ?? genome.id)}</select></label><label>Blue general<select id="matchup-blue"><option value="">Choose blue</option>${options(matchupGenomes, genome => genome.id, genome => genome.name ?? genome.id)}</select></label><button id="run-exhibition" type="button" ${!matchup.redId || !matchup.blueId || matchup.redId === matchup.blueId ? "disabled" : ""}>Run exhibition</button></div>
             <div class="matchup-labels"><span>Historical · evolutionary ledger</span><span>Exhibition · separate replay store</span></div>${matchup.history ? `<p>${matchup.history.games} historical games · ${matchup.history.wins[matchup.redId]} red wins · ${matchup.history.wins[matchup.blueId]} blue wins · ${matchup.history.wins.draws} draws</p>` : ""}
             <div class="replay-list">${(matchup.replays ?? []).map(record => `<button class="replay-select ghost" type="button" data-replay-id="${escapeHtml(record.replayId)}"><b>Exhibition</b> ${escapeHtml(record.game.redId)} vs ${escapeHtml(record.game.blueId)}</button>`).join("") || "No exhibition replays saved."}</div>
-            ${matchup.selectedReplay ? `<div class="replay-view"><h3>Stored board sequence</h3><p>${replayFrames.length} frames · ${matchup.selectedReplay.game.replay.actions.length} actions</p><pre>${escapeHtml(JSON.stringify(replayFrames, null, 2))}</pre></div>` : ""}</div>` : '<div class="matchup-card empty-progress"><b>No population available</b><span>Select a completed generation to launch an exhibition.</span></div>'}
+            ${matchup.selectedReplay ? `<div class="replay-view"><h3>Stored board replay</h3><p>Frame ${replayView.index + 1} of ${replayView.total}${replayView.round == null ? "" : ` · Round ${escapeHtml(replayView.round)}`}${replayView.turn ? ` · ${escapeHtml(replayView.turn)} turn` : ""}</p>
+              <svg class="reach-board" viewBox="0 0 100 100" role="img" aria-label="Reach board at replay frame ${replayView.index + 1}">${replayView.cells.map(cell => `<circle class="board-cell${cell.base ? ` base-${cell.base}` : ""}" cx="${cell.x}" cy="${cell.y}" r="5"></circle>`).join("")}${replayView.units.map(unit => `<g class="board-unit side-${escapeHtml(unit.side)}${unit.active ? "" : " inactive"}" transform="translate(${unit.x} ${unit.y})"><circle r="4"></circle><text text-anchor="middle" dominant-baseline="central">${escapeHtml(unit.type ?? "?")}</text><title>${escapeHtml(unit.id)}</title></g>`).join("")}</svg>
+              <div class="replay-controls"><button id="replay-previous" type="button"${replayView.index === 0 ? " disabled" : ""}>Previous</button><input id="replay-frame" type="range" min="0" max="${replayView.total - 1}" value="${replayView.index}" aria-label="Replay frame"><button id="replay-next" type="button"${replayView.index === replayView.total - 1 ? " disabled" : ""}>Next</button></div>
+              <p class="replay-action">${replayView.action ? `Action: ${escapeHtml(replayView.action.kind)} · unit ${escapeHtml(replayView.action.unitId)}` : "Initial board state"}</p><details><summary>Raw stored frame</summary><pre>${escapeHtml(JSON.stringify(replayFrames[replayView.index], null, 2))}</pre></details></div>` : ""}</div>` : '<div class="matchup-card empty-progress"><b>No population available</b><span>Select a completed generation to launch an exhibition.</span></div>'}
         </section>
         <section class="reports-panel" id="reports"><div><p class="eyebrow">Immutable analytics</p><h2>Generation reports</h2>
           <p class="intro">Reports are read directly from the selected completed generation. Downloads never alter its evolutionary ledger.</p></div>
@@ -151,11 +158,13 @@ export function renderLabShell(state, {
         <p class="dialog-summary">This removes the run, every completed generation, ledger, progress checkpoint, and replay stored under it.</p>
         <div class="dialog-actions"><button value="cancel">Cancel</button><button class="danger" value="delete">Delete permanently</button></div></form></dialog>
       <dialog id="intervention-dialog" aria-labelledby="intervention-title"><form id="intervention-form" method="dialog"><p class="eyebrow">Audited change</p><h2 id="intervention-title">Queue intervention</h2>
-        <label>Operation<select name="type"><option value="manual-move">Move / manual migrant</option><option value="copy-entrant">Copy entrant</option></select></label>
+        <label>Operation<select name="type"><option value="manual-move">Move / manual migrant</option><option value="copy-entrant">Copy entrant</option><option value="replacement-upload">Replace with uploaded genome</option></select></label>
         <label>Source general ID<input name="generalId" required></label>
         <label>Source population<select name="from">${options(R29_POPULATIONS, value => value, value => value)}</select></label>
         <label>Destination population<select name="to">${options(R29_POPULATIONS, value => value, value => value)}</select></label>
         <label>New ID (copy only)<input name="newId"></label><label>New name (copy only)<input name="newName"></label>
+        <label>Replacement genome file<input name="genomeFile" type="file" accept=".json,application/json"><small>JSON only, maximum 1 MB.</small></label>
+        <label>Or paste replacement JSON<textarea name="genomeJson" placeholder='{"id":"MANUAL_R30_001","name":"Uploaded General","genes":{...}}'></textarea></label>
         <label>Audit note<textarea name="note" required placeholder="Why is this population change being made?"></textarea></label>
         <div class="dialog-actions"><button value="cancel" formnovalidate>Cancel</button><button value="queue">Queue change</button></div></form></dialog>
     </div>`;

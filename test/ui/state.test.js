@@ -90,6 +90,9 @@ test("intervention queue renders audited move and copy operations safely", () =>
   assert.match(html, /Move &lt;review&gt;/);
   assert.match(html, /remove-intervention/);
   assert.match(html, /intervention-dialog/);
+  assert.match(html, /Replace with uploaded genome/);
+  assert.match(html, /name="genomeFile" type="file" accept="\.json,application\/json"/);
+  assert.match(html, /maximum 1 MB/);
 });
 
 test("durable progress renders phase, safe cursor, and checkpoint metadata", () => {
@@ -168,7 +171,10 @@ test("matchups label historical and exhibition data and render stored replay fra
   const selectedReplay = {
     replayId: "replay<1>", game: {
       kind: "exhibition", redId: "A<1>", blueId: "B&2",
-      replay: { actions: [{ kind: "move" }], frames: [{ units: [] }, { units: [{ id: "R1" }] }] }
+      replay: { actions: [{ kind: "move", unitId: "R1" }], frames: [
+        { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-3, 0] }] },
+        { round: 1, turn: "R", units: [{ id: "R1", side: "R", typ: "P", pos: [-2, 0] }] }
+      ] }
     }
   };
   const html = renderLabShell(createLabState({ runs, generations: [matchupGeneration] }), {
@@ -179,7 +185,9 @@ test("matchups label historical and exhibition data and render stored replay fra
   });
   assert.match(html, /Historical · evolutionary ledger/);
   assert.match(html, /Exhibition · separate replay store/);
-  assert.match(html, /2 frames · 1 actions/);
+  assert.match(html, /Frame 1 of 2/);
+  assert.match(html, /aria-label="Reach board at replay frame 1"/);
+  assert.match(html, /Initial board state/);
   assert.match(html, /A&lt;1&gt; vs B&amp;2/);
   assert.doesNotMatch(html, /A<1>/);
 });

@@ -133,6 +133,21 @@ export function planManualPopulationInterventions(operations, parentGenomes) {
         newName: operation.newName, note: operation.note
       };
     }
+    if (operation?.type === "replacement-upload") {
+      const replaced = parentGenomes.get(operation.replacesGeneralId);
+      const genome = structuredClone(operation.genome);
+      if (!replaced || replaced.population !== operation.to || genome?.population !== operation.to
+        || (parentGenomes.has(genome?.id) && genome.id !== replaced.id)) {
+        throw new Error(`Invalid replacement upload: ${operation?.replacesGeneralId ?? "unknown"}`);
+      }
+      if (entrantIds.has(genome.id)) throw new Error(`Duplicate manual entrant: ${genome.id}`);
+      entrantIds.add(genome.id);
+      return {
+        id: genome.id, sourceId: genome.id, currentPopulation: operation.to,
+        destinationPopulation: operation.to, destinationRank: 1, origin: "manual_replacement",
+        replacesId: replaced.id, uploadedGenome: genome, note: operation.note
+      };
+    }
     throw new Error(`Unsupported manual intervention: ${operation?.type ?? "unknown"}`);
   });
 }
@@ -147,7 +162,8 @@ export function applyMigrationToResidentPools(rankings, migrants, survivorSlots 
     migrantIds.add(migrant.id);
     const source = outgoing.get(migrant.currentPopulation);
     if (source === undefined) throw new Error(`Unknown migrant source: ${migrant.currentPopulation}`);
-    if (migrant.origin !== "manual_copy") source.add(migrant.sourceId ?? migrant.id);
+    if (migrant.origin === "manual_replacement") source.add(migrant.replacesId);
+    else if (migrant.origin !== "manual_copy") source.add(migrant.sourceId ?? migrant.id);
     const destination = incoming.get(migrant.destinationPopulation);
     if (destination === undefined) throw new Error(`Unknown migrant destination: ${migrant.destinationPopulation}`);
     destination.push({
@@ -157,7 +173,9 @@ export function applyMigrationToResidentPools(rankings, migrants, survivorSlots 
       sourcePopulation: migrant.currentPopulation,
       destinationPopulation: migrant.destinationPopulation,
       origin: migrant.origin ?? "automatic_migrant",
+      ...(migrant.replacesId ? { replacesId: migrant.replacesId } : {}),
       ...(migrant.newName ? { name: migrant.newName } : {}),
+      ...(migrant.uploadedGenome ? { genome: structuredClone(migrant.uploadedGenome) } : {}),
       ...(migrant.note ? { note: migrant.note } : {})
     });
   }
@@ -179,7 +197,7 @@ export function validateMigrationResidentPools(pools, survivorSlots = 14) {
     for (const resident of residents) {
       if (ids.has(resident.id)) throw new Error(`Genome occupies multiple resident pools: ${resident.id}`);
       ids.add(resident.id);
-      if (["automatic_migrant", "manual_migrant", "manual_copy"].includes(resident.origin)
+      if (["automatic_migrant", "manual_migrant", "manual_copy", "manual_replacement"].includes(resident.origin)
         && resident.breedingEligible !== false) {
         throw new Error(`Incoming resident is incorrectly breeding-eligible: ${resident.id}`);
       }

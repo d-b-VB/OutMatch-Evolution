@@ -141,6 +141,7 @@ export class BrowserRunService {
     if (this.active) throw new Error("A generation operation is already active");
     if (await this.progressRepository.get(runId)) throw new Error("Run already has durable progress; resume it instead");
     validateReviewedInputs(parent, controlReview);
+    this.stopRequested = false;
     const prepared = await this.prepareGeneration({
       runId, parent: structuredClone(parent), controlReview: structuredClone(controlReview),
       breedingSeed, breedingPrngVersion

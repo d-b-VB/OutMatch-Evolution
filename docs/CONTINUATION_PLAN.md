@@ -55,11 +55,11 @@ Acceptance:
 - Button-state tests cover idle, running, pause-requested, paused, finalizing, and failed states.
 - Reloading while paused displays a resumable operation without replaying games.
 
-The lab now derives all execution-button availability from a tested operation
-model and durable progress, distinguishes execution from persistence failures,
-and displays the last safe cursor. DOM wiring to a production generation
-preparer remains part of the browser integration work; controls stay disabled
-until a selected immutable parent and reviewed draft make starting safe.
+The lab derives all execution-button availability from a tested operation model
+and durable progress, distinguishes execution from persistence failures, and
+displays the last safe cursor. Production DOM wiring delegates preparation and
+durable orchestration to the run service; controls stay disabled until a selected
+immutable parent and reviewed draft make starting safe.
 
 ### Batch 6.3 — populations and lineage — complete
 
@@ -138,8 +138,8 @@ wide tables. `npm run verify:browser` provides a dependency-free Chromium smoke
 check and desktop/phone screenshot capture. Its in-browser acceptance page now
 exercises IndexedDB upgrade/reopen, a real module Worker game, `.omgen`
 export/import, Blob download construction, and an actual document reload between
-a persisted pause and deterministic resume. This batch remains open until an
-environment with Chromium runs those checks. A deterministic visual scenario now
+a persisted pause and deterministic resume. The reported Chromium CI run completed
+those checks. A deterministic visual scenario now
 scripts dashboard, active-run, report, population, and replay captures at both
 breakpoints. The acceptance page also checks phone-width overflow, skip-link
 focus, and dialog focus entry/return.
@@ -152,6 +152,20 @@ Deliverables:
 2. Add fixture/checksum validation before expensive suites.
 3. Document expected runtime and environment requirements.
 
+Run the complete release gate with `npm run verify:all`. It validates the
+checked-in deterministic fixture and seed SHA-256 manifest before starting the
+expensive suites, then runs the full Node suite, golden games, focused Steps
+3–6, the static build, and native browser acceptance in order. The command is
+intentionally strict: a missing Chromium installation is a failure rather than
+a skipped release gate. Set `CHROMIUM_PATH` when Chromium is not available as
+`chromium`, `chromium-browser`, or `google-chrome` on `PATH`.
+
+Runtime depends primarily on the full golden-game set and host CPU. Allow
+several minutes on a typical developer laptop and additional time on constrained
+CI runners. The command requires a supported Node/npm installation, enough CPU
+and memory for Worker tests, an available loopback port `4173`, and headless
+Chromium with permission to write screenshots under `artifacts/browser/`.
+
 ### Batch 7.2 — GitHub Pages delivery
 
 Deliverables:
@@ -159,6 +173,14 @@ Deliverables:
 1. Make the static build base-path safe for a project Pages URL.
 2. Add deployment documentation and a Pages workflow.
 3. Verify a clean clone can test, build, serve `dist`, and use browser Workers from the deployed path.
+
+The static build now includes browser acceptance assets and can be mounted below
+a project subpath by the development server. `npm run verify:pages` builds and
+serves `dist` at `/OutMatch-Evolution`, then runs the real Worker/browser checks
+against that nested URL. Pull requests run this gate and retain its screenshots;
+pushes to `main` run it before uploading and deploying `dist`. Setup and local reproduction are documented in
+[`DEPLOYMENT.md`](DEPLOYMENT.md). Local reproduction still requires a
+Chromium-equipped environment; CI is the authoritative native-browser gate.
 
 ## Commands at handoff
 
@@ -169,16 +191,20 @@ npm run verify:step4
 npm run verify:step5
 npm run verify:step6
 npm run build
+npm run verify:fixtures
+npm run verify:all
+npm run verify:pages
 ```
 
-`verify:step6` currently covers the pure UI models and render/action adapters. Batch 6.6 should extend it with browser acceptance rather than replacing these fast tests.
+`verify:step6` covers the fast UI models and render/action adapters; the reported CI browser run supplies the complementary native acceptance gate.
 
 ## Known gaps and cautions
 
-- The production DOM still does not instantiate `BrowserRunService` with a real generation preparer, so visible run buttons do not yet start or resume the coordinator.
-- Manual moves and copy entrants now enter child resident pools as audited, non-breeding residents; production wiring must pass the reviewed intervention document into generation assembly. The advanced replacement/upload operation is still pending.
+- The production DOM instantiates `BrowserRunService` and `RunOperationController`, loads repository-backed parent ledgers and evolution resources, and wires run-next, run-many, pause, resume, and boundary-stop controls; the reported native-browser CI run covers this path.
+- Manual moves, copies, and validated 112-locus replacement uploads enter child resident pools as audited, non-breeding residents; production wiring passes the reviewed intervention document into generation assembly.
 - The reviewed mutation probability is now consumed by generation breeding for ordinary and self-cross births; preserve its deterministic rescaling when wiring the production preparer.
 - Automatic migration planning now evaluates every outsider only against the generation's canonical recruiting population and returns both the audited candidates and selected entrants.
-- Replay rendering currently exposes the stored frame data rather than a graphical Reach board.
-- The build copies static files and has not been validated under a GitHub Pages project subpath.
-- Native browser acceptance is scripted but still must pass in a Chromium-equipped environment.
+- `prepareProductionGeneration` combines the parent ledger, reviewed controls, migration, interventions, mutation ranges, breeding, canonical Stage 1 scheduling, report builders, and immutable record builders; reviewed hashes are persisted for reload restoration.
+- Replay rendering now provides a graphical, keyboard-operable Reach board timeline while retaining raw stored frames for audit inspection.
+- The build and Pages workflow are project-subpath safe and verified by the reported Chromium CI run; local reproduction still requires `CHROMIUM_PATH` when Chrome is not on `PATH`.
+- Batch 7.1's consolidated release command and fixture checksum preflight are implemented, and browser artifacts are retained by CI for audit.
