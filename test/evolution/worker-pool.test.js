@@ -73,6 +73,7 @@ test("bounded pool restores schedule order and reports progress despite out-of-o
   assert.deepEqual(rows.map(row => row.scheduleIndex), [0, 1, 2]);
   assert.deepEqual(progress.map(event => event.completed), [1, 2, 3]);
   assert.ok(progress.every(event => event.total === 3 && event.stage === "stage1_core"));
+  assert.ok(progress.every(event => Number.isSafeInteger(event.scheduleIndex) && event.redId && event.blueId));
   assert.ok(workers.every(worker => worker.terminated));
 });
 

@@ -86,8 +86,11 @@ test("initial progress binds reviewed controls, intervention document, seed, and
 
 test("browser run service completes a reduced generation through one final commit", async () => {
   const commits = [];
+  const checkpoints = [];
   const progress = new MemoryProgress();
-  const result = await service(progress, prepared(commits)).start({
+  const result = await service(progress, prepared(commits), {
+    onCheckpoint: checkpoint => checkpoints.push(checkpoint)
+  }).start({
     runId: "run-one", parent, controlReview, breedingSeed: "seed-one"
   });
   assert.equal(result.status, "complete");
@@ -95,6 +98,8 @@ test("browser run service completes a reduced generation through one final commi
   assert.deepEqual(result.ledger.rows.map(row => row.scheduleIndex), [0, 1]);
   assert.equal(result.generation.fingerprint, "child-fingerprint");
   assert.ok(progress.saves.some(record => record.phase === "finalizing"));
+  assert.ok(checkpoints.length > 1);
+  assert.equal(checkpoints.at(-1).phase, "finalizing");
 });
 
 test("pause, reopen, and resume preserves ledger and child fingerprint", async () => {

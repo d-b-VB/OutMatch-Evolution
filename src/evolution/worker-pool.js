@@ -71,6 +71,9 @@ export function runWorkerSchedule({
         onProgress({
           stage: state.request.game.stage,
           challengerIteration: state.request.game.challengerIteration,
+          scheduleIndex: state.request.game.scheduleIndex,
+          redId: state.request.game.redId,
+          blueId: state.request.game.blueId,
           completed,
           total: schedule.length
         });

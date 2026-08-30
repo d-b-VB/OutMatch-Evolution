@@ -229,6 +229,24 @@ export async function saveCompletedGenerationWithLedger(database, generation, le
   });
 }
 
+/** Create a run and its bundled immutable baseline in one transaction. */
+export async function initializeRunWithGeneration(database, run, generation, ledger) {
+  validateRunRecord(run);
+  validateGenerationLedgerPair(generation, ledger);
+  if (run.runId !== generation.runId) throw new Error("Run and baseline generation identities do not match");
+  const stores = [STORE_NAMES.runs, STORE_NAMES.generations, STORE_NAMES.ledgers];
+  return withTransaction(database, stores, "readwrite", async transaction => {
+    const runStore = transaction.objectStore(STORE_NAMES.runs);
+    const existing = await requestResult(runStore.get(run.runId));
+    if (existing !== undefined) return { run: existing, initialized: false };
+    await addImmutable(runStore, run, `Run ${run.runId}`);
+    await addImmutable(transaction.objectStore(STORE_NAMES.ledgers), ledger, `Ledger ${ledger.ledgerId}`);
+    await addImmutable(transaction.objectStore(STORE_NAMES.generations), generation,
+      `Completed generation ${generation.runId}/${generation.generation}`);
+    return { run, generation, ledger, initialized: true };
+  });
+}
+
 /** Commit final artifacts and remove resumable progress in the same transaction. */
 export async function finalizeCompletedGeneration(database, generation, ledger) {
   validateGenerationLedgerPair(generation, ledger);
