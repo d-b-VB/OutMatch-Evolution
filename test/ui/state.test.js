@@ -122,6 +122,19 @@ test("running progress renders live worker fight diagnostics", () => {
   assert.match(html, /Schedule 5/);
 });
 
+test("active execution renders a visible animated battle indicator", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 4, schedule: Array(10).fill({}), completedLedger: [] },
+    runOperation: { status: "running", errorKind: null, errorMessage: null, safeCursor: null, stopRequested: false }
+  });
+  assert.match(html, /battle-orbit/);
+  assert.match(html, /Tournament simulation active/);
+  assert.match(html, /🐎/);
+  assert.match(html, /🏹/);
+  assert.match(html, /🛡️/);
+});
+
 test("stored progress clearly says when no fights are running", () => {
   const state = createLabState({ runs, generations });
   const html = renderLabShell(state, {
