@@ -9,6 +9,7 @@ import { buildFitnessReport } from "../reports/fitness.js";
 import { buildSimilarityReport } from "../reports/similarity.js";
 import { buildIndividualUnitRates, buildPopulationUnitRates } from "../reports/unit-rates.js";
 import { createTournamentHooks } from "./run-service.js";
+import { buildCombatCache } from "../evolution/worker-pool.js";
 import { validateInterventionDocument } from "./interventions.js";
 
 function rankingsByPopulation(rankings) {
@@ -84,6 +85,7 @@ export function prepareProductionGeneration({
     stage1Schedule,
     genomes: childGenomes,
     workerCount: controls.workerCount,
+    cacheSeedEntries: buildCombatCache(parentGenomes, parentLedger.rows),
     tournamentHooks,
     finalizationHooks: {
       rankFinal: tournamentHooks.rankFinal,

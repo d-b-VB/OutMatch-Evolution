@@ -7,6 +7,7 @@ import {
   PERSISTENCE_SCHEMAS,
   STORE_NAMES,
   validateCompletedGenerationRecord,
+  validateCombatCacheRecord,
   validateLedgerRecord,
   validateIncrementalRunProgressRecord,
   validateRunProgressRecord,
@@ -16,10 +17,10 @@ import {
 
 const timestamp = "2026-08-27T12:00:00.000Z";
 
-test("persistence constants freeze the version-one database layout", () => {
+test("persistence constants freeze the version-two database layout", () => {
   assert.equal(DATABASE_NAME, "outmatch-reach");
-  assert.equal(DATABASE_VERSION, 1);
-  assert.deepEqual(Object.values(STORE_NAMES), ["runs", "generations", "ledgers", "run_progress", "settings", "replays"]);
+  assert.equal(DATABASE_VERSION, 2);
+  assert.deepEqual(Object.values(STORE_NAMES), ["runs", "generations", "ledgers", "run_progress", "settings", "replays", "combat_cache"]);
   assert.ok(Object.isFrozen(STORE_NAMES));
 });
 
@@ -74,6 +75,20 @@ test("incremental progress validation accepts only an appended matching schedule
   assert.throws(() => validateIncrementalRunProgressRecord({ ...next, controlsHash: "changed" }, base), /changed controlsHash/);
   assert.throws(() => validateIncrementalRunProgressRecord({ ...next,
     partialLedger: [schedule[0], { ...schedule[1], blueId: "wrong" }] }, base), /does not match/);
+});
+
+test("combat cache requires complete canonical combat metrics", () => {
+  const combat = { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+    engineRulesVersion: "reach-v1" };
+  for (const color of ["red", "blue"]) {
+    for (const field of ["P", "A", "C", "Pokes", "KillByP", "KillByA", "KillByC", "VictimP", "VictimA", "VictimC"]) {
+      combat[`${color}${field}`] = 0;
+    }
+  }
+  const record = { schema: PERSISTENCE_SCHEMAS.combatCache, cacheKey: "exact-key", combat };
+  assert.equal(validateCombatCacheRecord(record), record);
+  const incomplete = structuredClone(record); delete incomplete.combat.redPokes;
+  assert.throws(() => validateCombatCacheRecord(incomplete), /missing redPokes/);
 });
 
 test("run and settings records validate independently and all records round-trip", () => {

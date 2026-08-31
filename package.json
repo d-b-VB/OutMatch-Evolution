@@ -22,6 +22,7 @@
     "verify:fixtures": "node scripts/verify-fixtures.mjs",
     "verify:version": "node scripts/verify-version.mjs",
     "verify:all": "node scripts/verify-all.mjs",
-    "verify:golden": "node scripts/verify-golden.mjs"
+    "verify:golden": "node scripts/verify-golden.mjs",
+    "verify:fast-golden": "node scripts/verify-golden.mjs --engine=fast"
   }
 }

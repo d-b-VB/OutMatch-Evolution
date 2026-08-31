@@ -1,10 +1,10 @@
 import { openPersistenceDatabase } from "../persistence/database.js";
-import { CompletedGenerationRepository, LedgerRepository, ProgressRepository, ReplayRepository, RunRepository, SettingsRepository } from "../persistence/repositories.js";
+import { CombatCacheRepository, CompletedGenerationRepository, LedgerRepository, ProgressRepository, ReplayRepository, RunRepository, SettingsRepository } from "../persistence/repositories.js";
 import {
   commitLabImport, createLabRun, exportLabGeneration, inspectLabImport, loadLabStorage,
   persistControlReview, persistDraftControls, persistLabSelection, removeLabRun
 } from "./actions.js";
-import { controlsFromForm, DEFAULT_LAB_CONTROLS, reviewLabControls, validateLabControls } from "./controls.js";
+import { controlsFromForm, DEFAULT_LAB_CONTROLS, recommendedWorkerCount, reviewLabControls, validateLabControls } from "./controls.js";
 import { interventionFromForm, replacementGenomeFromFile } from "./interventions.js";
 import { buildReportView, reportDownload } from "./report-view.js";
 import { renderLabShell } from "./render.js";
@@ -363,9 +363,11 @@ async function bootstrap() {
       ledgers: new LedgerRepository(database),
       progress: new ProgressRepository(database),
       replays: new ReplayRepository(database),
-      settings: new SettingsRepository(database)
+      settings: new SettingsRepository(database),
+      combatCache: new CombatCacheRepository(database)
     };
     settings = await repositories.settings.get();
+    if (!settings) draftControls = { ...DEFAULT_LAB_CONTROLS, workerCount: recommendedWorkerCount() };
     if (settings?.draftControls) {
       try { draftControls = validateLabControls(settings.draftControls); }
       catch { draftControls = DEFAULT_LAB_CONTROLS; notice = { kind: "error", message: "Stored control draft was invalid and has been reset." }; }
@@ -380,6 +382,7 @@ async function bootstrap() {
     const runService = new BrowserRunService({
       database,
       progressRepository: repositories.progress,
+      cacheRepository: repositories.combatCache,
       onCheckpoint: checkpoint => {
         const phaseChanged = progress?.phase !== checkpoint.phase;
         progress = checkpoint;

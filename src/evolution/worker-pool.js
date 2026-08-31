@@ -12,15 +12,37 @@ function canonical(value) {
   return JSON.stringify(value);
 }
 
-function matchupKey(game, genomes, engineOptions) {
+export function matchupCacheKey(game, genomes, engineOptions = { depth: 3 }) {
   return canonical({ engineRulesVersion: "reach-v1", engineOptions,
-    red: genomes.get(game.redId)?.genes, blue: genomes.get(game.blueId)?.genes });
+    red: genomes.get(game.redId), blue: genomes.get(game.blueId) });
 }
 
-function cacheCombatRow(row) {
-  const copy = { ...row };
-  for (const key of ["stage", "scheduleIndex", "redId", "blueId"]) delete copy[key];
-  return copy;
+export function fingerprintGenes(genes) {
+  const input = new TextEncoder().encode(canonical(genes));
+  let hash = 0xcbf29ce484222325n;
+  for (const byte of input) { hash ^= BigInt(byte); hash = BigInt.asUintN(64, hash * 0x100000001b3n); }
+  return hash.toString(16).padStart(16, "0");
+}
+
+export function cacheCombatRow(row) {
+  const fields = ["outcome", "winner", "round", "redScore", "blueScore", "redP", "redA", "redC",
+    "redPokes", "redKillByP", "redKillByA", "redKillByC", "redVictimP", "redVictimA", "redVictimC",
+    "blueP", "blueA", "blueC", "bluePokes", "blueKillByP", "blueKillByA", "blueKillByC",
+    "blueVictimP", "blueVictimA", "blueVictimC", "engineRulesVersion"];
+  return Object.fromEntries(fields.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]]));
+}
+
+export function buildCombatCache(genomes, rows, engineOptions = { depth: 3 }) {
+  const fingerprints = new Map([...genomes].map(([id, genome]) => [id, fingerprintGenes(genome.genes)]));
+  const cache = new Map();
+  for (const row of rows) {
+    if (!fingerprints.has(row.redId) || !fingerprints.has(row.blueId) || row.engineRulesVersion !== "reach-v1") continue;
+    const combat = cacheCombatRow(row);
+    if (combat.redP === undefined || combat.blueP === undefined || combat.redKillByP === undefined
+      || combat.blueVictimC === undefined) continue;
+    cache.set(matchupCacheKey(row, fingerprints, engineOptions), combat);
+  }
+  return cache;
 }
 
 function scheduledCachedRow(game, combat) {
@@ -36,11 +58,14 @@ export class ReusableWorkerPoolSession {
     if (!(genomes instanceof Map) || !Number.isSafeInteger(workerCount) || workerCount < 1) {
       throw new Error("Reusable Worker pool requires indexed genomes and a positive Worker count");
     }
-    this.genomes = genomes; this.workerCount = workerCount; this.createWorker = createWorker;
+    this.genomes = genomes; this.genomeFingerprints = new Map([...genomes]
+      .map(([id, genome]) => [id, fingerprintGenes(genome.genes)]));
+    this.workerCount = workerCount; this.createWorker = createWorker;
     this.engineOptions = engineOptions; this.cache = cache; this.onProgress = onProgress; this.onActivity = onActivity;
     this.workers = []; this.initialized = false; this.closed = false;
     this.activityCaptured = false; this.inFlight = 0;
-    this.stats = { workerPoolStartups: 0, newlySimulatedGames: 0, cacheHits: 0 };
+    this.newCacheEntries = new Map();
+    this.stats = { workerPoolStartups: 0, newlySimulatedGames: 0, cacheHits: 0, workerBusyMilliseconds: 0 };
   }
 
   async initialize() {
@@ -74,7 +99,7 @@ export class ReusableWorkerPoolSession {
       if (!this.genomes.has(schedule[index].redId) || !this.genomes.has(schedule[index].blueId)) {
         throw new Error(`Unknown genome in ${schedule[index].redId} vs ${schedule[index].blueId}`);
       }
-      const key = matchupKey(schedule[index], this.genomes, this.engineOptions);
+      const key = matchupCacheKey(schedule[index], this.genomeFingerprints, this.engineOptions);
       const cached = this.cache.get(key);
       if (cached) { results[index] = scheduledCachedRow(schedule[index], cached); this.stats.cacheHits += 1;
         this.onProgress({ ...schedule[index], completed: index + 1, total: schedule.length, cacheHit: true }); }
@@ -93,6 +118,7 @@ export class ReusableWorkerPoolSession {
           jobId: `game-${job.game.scheduleIndex}`, game: job.game, captureActivity
         });
         state.request = { request, job };
+        state.startedAt = performance.now();
         this.inFlight += 1;
         this.onActivity({ status: "started", ...job.game, inFlight: this.inFlight });
         state.receive = message => {
@@ -100,7 +126,9 @@ export class ReusableWorkerPoolSession {
           try {
             const validated = validateGameResult(message, request);
             results[job.index] = validated.ledgerRow;
-            this.cache.set(job.key, cacheCombatRow(validated.ledgerRow));
+            const combat = cacheCombatRow(validated.ledgerRow);
+            this.cache.set(job.key, combat); this.newCacheEntries.set(job.key, combat);
+            this.stats.workerBusyMilliseconds += performance.now() - state.startedAt;
             this.stats.newlySimulatedGames += 1; completed += 1; this.inFlight -= 1;
             this.onActivity({ status: "completed", ...job.game, inFlight: this.inFlight,
               activity: validated.activity });

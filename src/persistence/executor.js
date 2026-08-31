@@ -56,9 +56,9 @@ export async function executeResumableSchedule({
   let completedSinceSave = 0;
   let safeCursor = state.cursor;
 
-  const persist = async () => {
+  const persist = async ({ fullValidation = false } = {}) => {
     state.updatedAt = now();
-    assertSafeCheckpointBoundary(state);
+    if (fullValidation) assertSafeCheckpointBoundary(state);
     let attempt = 0;
     while (true) {
       try {
@@ -78,7 +78,7 @@ export async function executeResumableSchedule({
   };
 
   if (shouldPause()) {
-    await persist();
+    await persist({ fullValidation: true });
     return { status: "paused", checkpoint: state };
   }
 
@@ -114,7 +114,7 @@ export async function executeResumableSchedule({
 
     const pauseRequested = shouldPause();
     if (pauseRequested || completedSinceSave >= checkpointInterval || state.cursor === state.schedule.length) {
-      await persist();
+      await persist({ fullValidation: pauseRequested });
     }
     if (pauseRequested) return { status: "paused", checkpoint: state };
   }

@@ -14,12 +14,13 @@ const schedule = [
 ];
 
 function resultFor(request) {
+  const { challengerIteration: _challengerIteration, ...game } = request.game;
   return {
     protocol: WORKER_PROTOCOL_VERSION,
     type: "game_result",
     jobId: request.jobId,
     scheduleIndex: request.game.scheduleIndex,
-    ledgerRow: { ...request.game, outcome: "draw", winner: "", round: 20 }
+    ledgerRow: { ...game, outcome: "draw", winner: "", round: 20 }
   };
 }
 
@@ -138,6 +139,8 @@ test("reusable pool initializes genomes once and reuses workers and exact combat
   assert.equal(session.stats.workerPoolStartups, 1);
   assert.equal(session.stats.newlySimulatedGames, 2);
   assert.equal(session.stats.cacheHits, 2);
+  assert.ok([...session.cache.values()].every(combat => combat.stage === undefined
+    && combat.scheduleIndex === undefined && combat.challengerIteration === undefined));
   assert.equal(workers.flatMap(worker => worker.messages).filter(message => message.captureActivity).length, 1);
   assert.equal(activity.filter(event => event.status === "started").length, 2);
   assert.equal(activity.filter(event => event.status === "completed").length, 2);

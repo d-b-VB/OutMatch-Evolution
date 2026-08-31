@@ -1,5 +1,6 @@
 import { transactionDone, requestResult } from "./database.js";
 import {
+  PERSISTENCE_SCHEMAS,
   STORE_NAMES,
   validateCompletedGenerationRecord,
   validateLedgerRecord,
@@ -7,6 +8,7 @@ import {
   validateRunProgressRecord,
   validateIncrementalRunProgressRecord,
   validateReplayRecord,
+  validateCombatCacheRecord,
   validateSettingsRecord
 } from "./schema.js";
 
@@ -214,6 +216,29 @@ export class ProgressRepository {
     requireId(runId, "Run ID");
     return withTransaction(this.database, STORE_NAMES.progress, "readwrite", async transaction => {
       await requestResult(transaction.objectStore(STORE_NAMES.progress).delete(runId));
+    });
+  }
+}
+
+export class CombatCacheRepository {
+  constructor(database) { this.database = database; }
+
+  async load() {
+    const records = await withTransaction(this.database, STORE_NAMES.combatCache, "readonly", transaction =>
+      requestResult(transaction.objectStore(STORE_NAMES.combatCache).getAll()));
+    records.forEach(validateCombatCacheRecord);
+    return new Map(records.map(record => [record.cacheKey, record.combat]));
+  }
+
+  async save(entries) {
+    if (!(entries instanceof Map) || entries.size === 0) return;
+    const records = [...entries].map(([cacheKey, combat]) => ({
+      schema: PERSISTENCE_SCHEMAS.combatCache, cacheKey, combat
+    }));
+    records.forEach(validateCombatCacheRecord);
+    await withTransaction(this.database, STORE_NAMES.combatCache, "readwrite", async transaction => {
+      const store = transaction.objectStore(STORE_NAMES.combatCache);
+      for (const record of records) await requestResult(store.put(record));
     });
   }
 }

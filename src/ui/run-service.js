@@ -117,6 +117,7 @@ export class BrowserRunService {
     onLiveProgress = () => {},
     checkpointBatchSize = DEFAULT_CHECKPOINT_BATCH_SIZE,
     workerSessionFactory = options => new ReusableWorkerPoolSession(options),
+    cacheRepository = null,
     now = () => new Date().toISOString()
   }) {
     if (!database || typeof progressRepository?.get !== "function" || typeof progressRepository?.save !== "function") {
@@ -138,6 +139,7 @@ export class BrowserRunService {
     }
     this.checkpointBatchSize = checkpointBatchSize;
     this.workerSessionFactory = workerSessionFactory;
+    this.cacheRepository = cacheRepository;
     this.now = now;
     this.pauseRequested = false;
     this.stopRequested = false;
@@ -191,6 +193,7 @@ export class BrowserRunService {
       batchSize: this.checkpointBatchSize, checkpoints: 0, combatMilliseconds: 0,
       checkpointMilliseconds: 0, phaseTransitionMilliseconds: 0, finalizationMilliseconds: 0 };
     let session;
+    let cacheSeedEntries = new Map();
     try {
       const genomes = prepared.genomes instanceof Map
         ? prepared.genomes : new Map(prepared.genomes?.map(genome => [genome.id, genome]));
@@ -205,12 +208,16 @@ export class BrowserRunService {
       let liveTotal = checkpoint.schedule.length;
       const underway = new Map();
       let firstFightActivity = [];
+      const combatCache = this.cacheRepository ? await this.cacheRepository.load() : new Map();
+      cacheSeedEntries = new Map([...(prepared.cacheSeedEntries ?? [])]
+        .filter(([key]) => !combatCache.has(key)));
+      for (const [key, value] of cacheSeedEntries) combatCache.set(key, value);
       const publishActivity = event => this.onLiveProgress({ ...event, completed: liveCompleted,
         total: liveTotal, underway: [...underway.values()].map(game => ({ redId: game.redId,
           blueId: game.blueId, scheduleIndex: game.scheduleIndex })), firstFightActivity,
         observedAt: this.now() });
       session = this.workerSchedule === runWorkerSchedule ? this.workerSessionFactory({
-        genomes, workerCount: prepared.workerCount ?? 1, createWorker: this.createWorker,
+        genomes, workerCount: prepared.workerCount ?? 1, createWorker: this.createWorker, cache: combatCache,
         engineOptions: prepared.engineOptions,
         onProgress: event => {
           liveCompleted += 1;
@@ -270,8 +277,23 @@ export class BrowserRunService {
       return { ...completed, stopRequested: this.stopRequested };
     } finally {
       session?.close();
+      if (session && this.cacheRepository) {
+        try { await this.cacheRepository.save(new Map([...cacheSeedEntries, ...session.newCacheEntries])); }
+        catch (error) { globalThis.console?.warn?.("OutMatch combat cache persistence failed", error); }
+      }
       if (session) Object.assign(diagnostics, session.stats);
       diagnostics.totalMilliseconds = Date.now() - started;
+      diagnostics.averageGameExecutionMilliseconds = diagnostics.newlySimulatedGames
+        ? diagnostics.combatMilliseconds / diagnostics.newlySimulatedGames : 0;
+      diagnostics.gamesPerSecond = diagnostics.combatMilliseconds
+        ? diagnostics.totalGames * 1000 / diagnostics.combatMilliseconds : 0;
+      diagnostics.cacheHitPercentage = diagnostics.totalGames
+        ? diagnostics.cacheHits * 100 / diagnostics.totalGames : 0;
+      diagnostics.checkpointOverheadPercentage = diagnostics.totalMilliseconds
+        ? diagnostics.checkpointMilliseconds * 100 / diagnostics.totalMilliseconds : 0;
+      diagnostics.workerUtilizationPercentage = diagnostics.combatMilliseconds && diagnostics.workerCount
+        ? Math.min(100, diagnostics.workerBusyMilliseconds * 100
+          / (diagnostics.combatMilliseconds * diagnostics.workerCount)) : 0;
       globalThis.console?.info?.("OutMatch generation performance", diagnostics);
       this.active = false;
     }

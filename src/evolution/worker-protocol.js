@@ -1,4 +1,4 @@
-import { runGame } from "../engine/board.js";
+import { runGame } from "../engine/fast-board.js";
 import { createScheduledGame } from "./schedule.js";
 
 export const WORKER_PROTOCOL_VERSION = "reach-game-worker-v1";
