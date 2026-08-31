@@ -13,6 +13,16 @@ export const DEFAULT_LAB_CONTROLS = Object.freeze({
   interventions: Object.freeze([])
 });
 
+/** Recommend throughput-only concurrency without overriding an explicitly saved choice. */
+export function recommendedWorkerCount(hardwareConcurrency = globalThis.navigator?.hardwareConcurrency) {
+  const threads = Number.isFinite(hardwareConcurrency) ? Math.max(1, Math.floor(hardwareConcurrency)) : 4;
+  if (threads <= 2) return 1;
+  if (threads <= 4) return 3;
+  if (threads <= 6) return 4;
+  if (threads <= 8) return 6;
+  return Math.min(12, Math.max(8, threads - 2));
+}
+
 function integer(value, label, minimum, maximum) {
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < minimum || parsed > maximum) {

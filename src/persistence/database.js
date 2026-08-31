@@ -54,7 +54,11 @@ function upgradeFrom0To1(database) {
   ]);
 }
 
-const DATABASE_MIGRATIONS = Object.freeze([upgradeFrom0To1]);
+function upgradeFrom1To2(database) {
+  createStore(database, STORE_NAMES.combatCache, { keyPath: "cacheKey" });
+}
+
+const DATABASE_MIGRATIONS = Object.freeze([upgradeFrom0To1, upgradeFrom1To2]);
 
 /** Apply every required schema migration in order inside the upgrade transaction. */
 export function upgradeDatabase(database, transaction, oldVersion = 0, newVersion = DATABASE_VERSION) {

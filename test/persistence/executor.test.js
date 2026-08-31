@@ -54,6 +54,21 @@ test("configurable intervals persist committed schedule prefixes", async () => {
   assert.ok(saved.every(state => state.updatedAt === "2026-03-02T00:00:00.000Z"));
 });
 
+test("batch execution checkpoints ordered worker results without per-game startup", async () => {
+  const batches = [];
+  const saved = [];
+  const result = await executeResumableSchedule({
+    checkpoint: checkpoint(),
+    executeGame: async game => game,
+    executeBatch: async games => { batches.push(games.map(game => game.scheduleIndex)); return games; },
+    saveCheckpoint: async state => saved.push(state.cursor),
+    checkpointInterval: 2
+  });
+  assert.deepEqual(batches, [[0, 1], [2, 3], [4]]);
+  assert.deepEqual(saved, [2, 4, 5]);
+  assert.deepEqual(result.checkpoint.partialLedger.map(row => row.scheduleIndex), [0, 1, 2, 3, 4]);
+});
+
 test("pause requests persist immediately without starting another game", async () => {
   const saved = [];
   let completed = 0;

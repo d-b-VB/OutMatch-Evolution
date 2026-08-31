@@ -30,6 +30,21 @@ test("complete generation summaries contain seven populations of 49", () => {
   assert.deepEqual(view.summaries.map(summary => summary.count), [49, 49, 49, 49, 49, 49, 49]);
 });
 
+test("population rows expose archived per-unit training, kill, and poke rates", () => {
+  const generation = completeGeneration();
+  const id = generation.checkpoint.population[0].id;
+  generation.reports = { unitRates: { individual: [{
+    id, trainedPerGame: { P: 1, A: 2, C: 3 }, killsPerGame: { P: 0.1, A: 0.2, C: 0.3 },
+    pokesPerGame: 0.4
+  }] } };
+  const view = buildPopulationView(generation, { selectedId: id });
+  const row = view.rows.find(item => item.id === id);
+  assert.equal(row.training, 6);
+  assert.ok(Math.abs(row.kills - 0.6) < 1e-12);
+  assert.equal(row.pokes, 0.4);
+  assert.deepEqual(view.detail.unitRates.trainedPerGame, { P: 1, A: 2, C: 3 });
+});
+
 test("population filtering and every supported sort leave archived data untouched", () => {
   const generation = completeGeneration();
   const snapshot = structuredClone(generation);

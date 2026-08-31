@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CompletedGenerationRepository,
+  CombatCacheRepository,
   LedgerRepository,
   ProgressRepository,
   ReplayRepository,
@@ -100,13 +101,15 @@ class MemoryDatabase {
     this.keyPaths[STORE_NAMES.ledgers] = "ledgerId";
     this.keyPaths[STORE_NAMES.progress] = "runId";
     this.keyPaths[STORE_NAMES.replays] = "replayId";
+    this.keyPaths[STORE_NAMES.combatCache] = "cacheKey";
     this.data = {
       [STORE_NAMES.runs]: new Map(),
       [STORE_NAMES.settings]: new Map(),
       [STORE_NAMES.generations]: new Map(),
       [STORE_NAMES.ledgers]: new Map(),
       [STORE_NAMES.progress]: new Map(),
-      [STORE_NAMES.replays]: new Map()
+      [STORE_NAMES.replays]: new Map(),
+      [STORE_NAMES.combatCache]: new Map()
     };
   }
   transaction(names) {
@@ -389,6 +392,18 @@ test("replays persist immutably and list newest-first by run", async () => {
   assert.equal((await repository.get("older")).replayId, "older");
   assert.deepEqual((await repository.list("run-one")).map(item => item.replayId), ["newer", "older"]);
   await assert.rejects(repository.save(replay("run-one", "older")), /already exists/);
+});
+
+test("complete exact combat results persist across repository instances", async () => {
+  const database = new MemoryDatabase();
+  const combat = { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+    engineRulesVersion: "reach-v1" };
+  for (const color of ["red", "blue"]) for (const field of [
+    "P", "A", "C", "Pokes", "KillByP", "KillByA", "KillByC", "VictimP", "VictimA", "VictimC"
+  ]) combat[`${color}${field}`] = 0;
+  await new CombatCacheRepository(database).save(new Map([["key", combat]]));
+  const loaded = await new CombatCacheRepository(database).load();
+  assert.deepEqual(loaded.get("key"), combat);
 });
 
 test("run cleanup removes owned artifacts without affecting another run", async () => {
