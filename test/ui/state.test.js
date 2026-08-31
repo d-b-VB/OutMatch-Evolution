@@ -166,6 +166,16 @@ test("run controls render phase-aware actions and escaped failure details", () =
   assert.match(html, /write &lt;failed&gt;/);
 });
 
+test("unsafe legacy progress offers progress-only recovery", () => {
+  const html = renderLabShell(createLabState({ runs, generations }), {
+    progressRecoveryError: "Cannot recover <checkpoint>"
+  });
+  assert.match(html, /Incomplete progress cannot be resumed safely/);
+  assert.match(html, /Discard incomplete progress and restart generation/);
+  assert.match(html, /Completed generations and their ledgers will not be deleted/);
+  assert.match(html, /Cannot recover &lt;checkpoint&gt;/);
+});
+
 test("archived report matrices render with safe download controls", () => {
   const reportGeneration = {
     ...generations[0], reports: { elimination: { matrix: {

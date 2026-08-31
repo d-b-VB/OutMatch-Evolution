@@ -14,6 +14,7 @@ import {
   withTransaction
 } from "../../src/persistence/repositories.js";
 import { PERSISTENCE_SCHEMAS, STORE_NAMES } from "../../src/persistence/schema.js";
+import { runDurableTournamentStages } from "../../src/persistence/durable-tournament.js";
 
 class Events {
   constructor() { this.listeners = new Map(); }
@@ -187,6 +188,7 @@ function progress(runId, cursor = 1) {
     phase: "stage1_running",
     schedule,
     partialLedger: schedule.slice(0, cursor),
+    completedLedger: [],
     cursor,
     tentativeElites: [],
     challengerHistory: [],
@@ -353,6 +355,32 @@ test("progress checkpoints save, replace, load, and clear by run", async () => {
   assert.equal(restored.phase, "stage1_ranking");
   await repository.clear("run-one");
   assert.equal(await repository.get("run-one"), undefined);
+});
+
+test("pre-v2 incomplete progress is normalized on load and resumes from its durable prefix", async () => {
+  const database = new MemoryDatabase();
+  const legacy = { ...progress("run-one", 1), childCandidate: { generation: "ReachR30", fingerprint: "child" } };
+  delete legacy.completedLedger;
+  delete legacy.tentativeElites;
+  delete legacy.challengerHistory;
+  database.data[STORE_NAMES.progress].set(JSON.stringify("run-one"), structuredClone(legacy));
+
+  const loaded = await new ProgressRepository(database).get("run-one");
+  assert.deepEqual(loaded.completedLedger, []);
+  assert.deepEqual(loaded.tentativeElites, []);
+  assert.deepEqual(loaded.challengerHistory, []);
+  assert.deepEqual(loaded.childCandidate, legacy.childCandidate);
+  const executed = [];
+  const result = await runDurableTournamentStages({
+    checkpoint: loaded,
+    expected: Object.fromEntries(["runId", "parentGeneration", "parentFingerprint", "targetGeneration",
+      "controlsHash", "interventionsHash", "breedingSeed", "breedingPrngVersion"].map(key => [key, loaded[key]])),
+    executeGame: async game => { executed.push(game.scheduleIndex); return game; },
+    saveCheckpoint: async () => {}, rankStage1: async () => [], buildStage2Schedule: async () => [],
+    rankStage2: async () => [], planChallengerIteration: async () => ({ challengers: [], schedule: [], rankings: [] })
+  });
+  assert.deepEqual(executed, [1]);
+  assert.equal(result.status, "ready_to_finalize");
 });
 
 test("progress writes reject invalid resumable state before database I/O", async () => {

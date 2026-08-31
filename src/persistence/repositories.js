@@ -11,6 +11,7 @@ import {
   validateCombatCacheRecord,
   validateSettingsRecord
 } from "./schema.js";
+import { normalizePersistedProgressRecord } from "./resume.js";
 
 function requireId(value, label) {
   if (typeof value !== "string" || value.length === 0) throw new Error(`${label} must be a non-empty string`);
@@ -206,8 +207,9 @@ export class ProgressRepository {
 
   async get(runId) {
     requireId(runId, "Run ID");
-    const record = await withTransaction(this.database, STORE_NAMES.progress, "readonly", transaction =>
+    const stored = await withTransaction(this.database, STORE_NAMES.progress, "readonly", transaction =>
       requestResult(transaction.objectStore(STORE_NAMES.progress).get(runId)));
+    const record = normalizePersistedProgressRecord(stored);
     if (record !== undefined) validateRunProgressRecord(record);
     return record;
   }

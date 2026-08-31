@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   assertSafeCheckpointBoundary,
   buildProgressCheckpoint,
+  normalizePersistedProgressRecord,
   restoreProgressCheckpoint,
   verifyResumeCompatibility
 } from "../../src/persistence/resume.js";
@@ -81,4 +82,25 @@ test("restoration returns an independent resumable tournament state", () => {
   restored.childCandidate.population.push("child");
   assert.equal(record.schedule[0].redId, "red-0");
   assert.deepEqual(record.childCandidate.population, []);
+});
+
+test("legacy normalization refuses to invent active challenger history", () => {
+  const active = checkpoint({
+    phase: "challenger_running",
+    schedule: [{ stage: "challenger", challengerIteration: 1, scheduleIndex: 2, redId: "red", blueId: "blue" }],
+    partialLedger: [], cursor: 0
+  });
+  delete active.challengerHistory;
+  assert.throws(() => normalizePersistedProgressRecord(active),
+    /challengerHistory is missing for an active challenger schedule.*discard only the incomplete progress/);
+});
+
+test("legacy normalization reconstructs completed challenger iterations deterministically", () => {
+  const completed = { ...checkpoint({ phase: "finalizing", schedule: [], partialLedger: [], cursor: 0 }),
+    completedLedger: [{ stage: "challenger", challengerIteration: 1, scheduleIndex: 2, redId: "red", blueId: "blue" }] };
+  delete completed.challengerHistory;
+  const normalized = normalizePersistedProgressRecord(completed);
+  assert.deepEqual(normalized.challengerHistory.map(item => ({
+    iteration: item.iteration, completed: item.completed, resultCount: item.resultCount, recovered: item.recovered
+  })), [{ iteration: 1, completed: true, resultCount: 1, recovered: true }]);
 });

@@ -1,5 +1,47 @@
 import { PERSISTENCE_SCHEMAS, validateRunProgressRecord } from "./schema.js";
 
+const PRE_CHALLENGER_PHASES = new Set([
+  "initialized", "breeding_migration", "stage1_running", "stage1_ranking", "stage2_running", "stage2_ranking"
+]);
+
+function recoverCompletedChallengerHistory(completedLedger) {
+  const byIteration = new Map();
+  for (const row of completedLedger) {
+    if (row.challengerIteration == null) continue;
+    if (!Number.isSafeInteger(row.challengerIteration) || row.challengerIteration < 1) {
+      throw new Error("Cannot recover progress: completed ledger has an invalid challenger iteration");
+    }
+    if (!byIteration.has(row.challengerIteration)) byIteration.set(row.challengerIteration, []);
+    byIteration.get(row.challengerIteration).push(structuredClone(row));
+  }
+  const iterations = [...byIteration.keys()].sort((left, right) => left - right);
+  if (iterations.some((iteration, index) => iteration !== index + 1)) {
+    throw new Error("Cannot recover progress: completed challenger iterations are not contiguous");
+  }
+  return iterations.map(iteration => ({
+    iteration, challengers: [], schedule: byIteration.get(iteration),
+    completed: true, resultCount: byIteration.get(iteration).length, recovered: true
+  }));
+}
+
+/** Upgrade older stored checkpoints without inventing deterministic child or active challenger state. */
+export function normalizePersistedProgressRecord(record) {
+  if (record === undefined) return undefined;
+  const normalized = structuredClone(record);
+  normalized.completedLedger ??= [];
+  normalized.tentativeElites ??= [];
+  if (normalized.challengerHistory === undefined) {
+    if (PRE_CHALLENGER_PHASES.has(normalized.phase)) normalized.challengerHistory = [];
+    else if (["challenger_running", "finalizing"].includes(normalized.phase)) {
+      if (normalized.schedule?.length > 0) {
+        throw new Error("Cannot recover progress: challengerHistory is missing for an active challenger schedule; discard only the incomplete progress and restart from its completed parent");
+      }
+      normalized.challengerHistory = recoverCompletedChallengerHistory(normalized.completedLedger);
+    }
+  }
+  return normalized;
+}
+
 function sameScheduledGame(left, right) {
   return left.stage === right.stage
     && (left.challengerIteration ?? null) === (right.challengerIteration ?? null)

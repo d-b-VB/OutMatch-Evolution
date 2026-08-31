@@ -31,7 +31,8 @@ function unitRateText(row, field, fallback) {
 
 export function renderLabShell(state, {
   notice = null, storage = null, draftControls = DEFAULT_LAB_CONTROLS, controlReview = null, progress = null,
-  liveProgress = null, selectedReportId = null, runOperation = createRunOperation(), populationOptions = {}, matchup = {}
+  progressRecoveryError = null, liveProgress = null, selectedReportId = null,
+  runOperation = createRunOperation(), populationOptions = {}, matchup = {}
 } = {}) {
   const { run, generation } = selectedLabRecords(state);
   const runGenerations = state.generations.filter(item => item.runId === state.selectedRunId);
@@ -106,6 +107,7 @@ export function renderLabShell(state, {
           ${runOperation.status === "pause_requested" ? '<p class="operation-status" role="status">Pause requested; finishing the current game and saving its checkpoint.</p>' : ""}
           ${runControls.paused && runOperation.status !== "pause_requested" ? '<p class="operation-status" role="status"><b>Execution is paused.</b> No fights are running. Press Resume to continue from the durable checkpoint.</p>' : ""}
           ${runOperation.status === "failed" ? `<div class="operation-error" role="alert"><b>${runOperation.errorKind === "persistence" ? "Persistence failure" : runOperation.errorKind === "execution" ? "Execution failure" : "Run failure"}</b><span>${escapeHtml(runOperation.errorMessage)}</span>${Number.isSafeInteger(runOperation.safeCursor) ? `<small>Last safe cursor: ${runOperation.safeCursor}</small>` : ""}</div>` : ""}
+          ${progressRecoveryError ? `<div class="operation-error" role="alert"><b>Incomplete progress cannot be resumed safely</b><span>${escapeHtml(progressRecoveryError)}</span><button id="discard-progress-button" class="danger" type="button">Discard incomplete progress and restart generation</button><small>Completed generations and their ledgers will not be deleted.</small></div>` : ""}
         </section>
         <section class="control-panel" id="ecology"><div><p class="eyebrow">Ecology draft</p><h2>Generation controls</h2>
           <p class="intro">Drafts are mutable. Starting a generation will freeze these values and their hash into its audit trail.</p></div>

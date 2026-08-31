@@ -55,11 +55,48 @@ test("progress records preserve deterministic resume inputs and bounded cursor",
     targetGeneration: "ReachR30", controlsHash: "controls", interventionsHash: "interventions",
     breedingSeed: "202608231656", breedingPrngVersion: "splitmix64-v1", updatedAt: timestamp,
     phase: "stage1_running", schedule, cursor: 1, partialLedger: schedule,
+    completedLedger: [],
     tentativeElites: [], challengerHistory: [], childCandidate: null
   };
   assert.doesNotThrow(() => validateRunProgressRecord(structuredClone(record)));
   assert.throws(() => validateRunProgressRecord({ ...record, cursor: 2 }), /outside its schedule/);
   assert.throws(() => validateRunProgressRecord({ ...record, phase: "unknown" }), /unknown phase/);
+  for (const field of ["completedLedger", "tentativeElites", "challengerHistory", "childCandidate"]) {
+    const incomplete = structuredClone(record); delete incomplete[field];
+    assert.throws(() => validateRunProgressRecord(incomplete), new RegExp(`field: ${field}`));
+  }
+});
+
+test("incremental progress validation accepts only an appended matching schedule prefix", () => {
+  const schedule = [0, 1].map(scheduleIndex => ({ stage: "stage1_core", scheduleIndex,
+    redId: `red-${scheduleIndex}`, blueId: `blue-${scheduleIndex}` }));
+  const base = { schema: PERSISTENCE_SCHEMAS.progress, runId: "run-1", parentGeneration: "ReachR29",
+    parentFingerprint: "fingerprint", targetGeneration: "ReachR30", controlsHash: "controls",
+    interventionsHash: "interventions", breedingSeed: "1", breedingPrngVersion: "splitmix64-v1",
+    updatedAt: timestamp, phase: "stage1_running", schedule, cursor: 0, partialLedger: [],
+    completedLedger: [],
+    tentativeElites: [], challengerHistory: [], childCandidate: null };
+  const next = { ...base, cursor: 2, partialLedger: schedule, updatedAt: "2026-08-27T12:01:00.000Z" };
+  assert.equal(validateIncrementalRunProgressRecord(next, base), next);
+  const missing = { ...next }; delete missing.challengerHistory;
+  assert.throws(() => validateIncrementalRunProgressRecord(missing, base), /field: challengerHistory/);
+  assert.throws(() => validateIncrementalRunProgressRecord({ ...next, controlsHash: "changed" }, base), /changed controlsHash/);
+  assert.throws(() => validateIncrementalRunProgressRecord({ ...next,
+    partialLedger: [schedule[0], { ...schedule[1], blueId: "wrong" }] }, base), /does not match/);
+});
+
+test("combat cache requires complete canonical combat metrics", () => {
+  const combat = { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+    engineRulesVersion: "reach-v1" };
+  for (const color of ["red", "blue"]) {
+    for (const field of ["P", "A", "C", "Pokes", "KillByP", "KillByA", "KillByC", "VictimP", "VictimA", "VictimC"]) {
+      combat[`${color}${field}`] = 0;
+    }
+  }
+  const record = { schema: PERSISTENCE_SCHEMAS.combatCache, cacheKey: "exact-key", combat };
+  assert.equal(validateCombatCacheRecord(record), record);
+  const incomplete = structuredClone(record); delete incomplete.combat.redPokes;
+  assert.throws(() => validateCombatCacheRecord(incomplete), /missing redPokes/);
 });
 
 test("incremental progress validation accepts only an appended matching schedule prefix", () => {

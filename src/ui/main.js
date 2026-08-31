@@ -27,6 +27,7 @@ let storage;
 let draftControls = DEFAULT_LAB_CONTROLS;
 let controlReview;
 let progress;
+let progressRecoveryError;
 let selectedReportId;
 let populationOptions = { population: "all", query: "", sort: "rank", direction: "asc", selectedId: null };
 let matchup = { redId: null, blueId: null, history: null, replays: [], selectedReplay: null };
@@ -127,14 +128,17 @@ async function refresh(preferredRunId = null) {
   const generations = (await Promise.all(runs.map(run => repositories.generations.list(run.runId)))).flat();
   const selected = preferredRunId ? { ...settings, selectedRunId: preferredRunId, selectedGeneration: null } : settings;
   state = createLabState({ runs, generations, settings: selected });
-  progress = state.selectedRunId ? await repositories.progress.get(state.selectedRunId) : null;
+  progressRecoveryError = null;
+  try { progress = state.selectedRunId ? await repositories.progress.get(state.selectedRunId) : null; }
+  catch (error) { progress = null; progressRecoveryError = error.message; }
   const storedReplays = state.selectedRunId ? await repositories.replays.list(state.selectedRunId) : [];
   matchup = { ...matchup, replays: storedReplays.filter(record => record.game?.kind === "exhibition") };
 }
 
 function paint() {
   root.innerHTML = renderLabShell(state, {
-    notice, storage, draftControls, controlReview, progress, liveProgress, selectedReportId, populationOptions, matchup, runOperation
+    notice, storage, draftControls, controlReview, progress, progressRecoveryError,
+    liveProgress, selectedReportId, populationOptions, matchup, runOperation
   });
   const runSelect = root.querySelector("#run-select");
   const generationSelect = root.querySelector("#generation-select");
@@ -180,6 +184,14 @@ function paint() {
   root.querySelector("#resume-run-button")?.addEventListener("click", async () => {
     try { liveProgress = null; await completeRunResult(await runController.resume({ runId: state.selectedRunId })); paint(); }
     catch (error) { notice = { kind: "error", message: error.message }; paint(); }
+  });
+  root.querySelector("#discard-progress-button")?.addEventListener("click", async () => {
+    try {
+      await repositories.progress.clear(state.selectedRunId);
+      progress = null; progressRecoveryError = null; liveProgress = null;
+      notice = { kind: "success", message: "Discarded only the incomplete checkpoint. Review controls to restart from the selected completed parent." };
+      paint();
+    } catch (error) { notice = { kind: "error", message: error.message }; paint(); }
   });
   const updateMatchup = async color => {
     const generation = state.generations.find(item => item.runId === state.selectedRunId && item.generation === state.selectedGeneration);
