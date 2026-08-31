@@ -122,9 +122,11 @@ test("pool propagates correlated Worker failures and terminates every Worker", a
 
 test("reusable pool initializes genomes once and reuses workers and exact combat results", async () => {
   const workers = [];
+  const activity = [];
   const session = new ReusableWorkerPoolSession({
     genomes, workerCount: 2, engineOptions: { depth: 1 },
-    createWorker: () => { const worker = new InitializedFakeWorker(); workers.push(worker); return worker; }
+    createWorker: () => { const worker = new InitializedFakeWorker(); workers.push(worker); return worker; },
+    onActivity: event => activity.push(event)
   });
   const first = await session.run(schedule.slice(0, 2));
   const repeated = await session.run(schedule.slice(0, 2));
@@ -136,6 +138,9 @@ test("reusable pool initializes genomes once and reuses workers and exact combat
   assert.equal(session.stats.workerPoolStartups, 1);
   assert.equal(session.stats.newlySimulatedGames, 2);
   assert.equal(session.stats.cacheHits, 2);
+  assert.equal(workers.flatMap(worker => worker.messages).filter(message => message.captureActivity).length, 1);
+  assert.equal(activity.filter(event => event.status === "started").length, 2);
+  assert.equal(activity.filter(event => event.status === "completed").length, 2);
   session.close();
   assert.ok(workers.every(worker => worker.terminated));
 });

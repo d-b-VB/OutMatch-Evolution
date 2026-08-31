@@ -32,13 +32,14 @@ function scheduledCachedRow(game, combat) {
 /** Long-lived initialized Worker pool shared by all checkpoint batches in a stage. */
 export class ReusableWorkerPoolSession {
   constructor({ genomes, workerCount = 1, createWorker = defaultWorkerFactory,
-    engineOptions = { depth: 3 }, cache = new Map(), onProgress = () => {} }) {
+    engineOptions = { depth: 3 }, cache = new Map(), onProgress = () => {}, onActivity = () => {} }) {
     if (!(genomes instanceof Map) || !Number.isSafeInteger(workerCount) || workerCount < 1) {
       throw new Error("Reusable Worker pool requires indexed genomes and a positive Worker count");
     }
     this.genomes = genomes; this.workerCount = workerCount; this.createWorker = createWorker;
-    this.engineOptions = engineOptions; this.cache = cache; this.onProgress = onProgress;
+    this.engineOptions = engineOptions; this.cache = cache; this.onProgress = onProgress; this.onActivity = onActivity;
     this.workers = []; this.initialized = false; this.closed = false;
+    this.activityCaptured = false; this.inFlight = 0;
     this.stats = { workerPoolStartups: 0, newlySimulatedGames: 0, cacheHits: 0 };
   }
 
@@ -86,15 +87,23 @@ export class ReusableWorkerPoolSession {
       const dispatch = state => {
         if (next >= pending.length) return;
         const job = pending[next++];
-        const request = createInitializedGameRequest({ jobId: `game-${job.game.scheduleIndex}`, game: job.game });
+        const captureActivity = !this.activityCaptured;
+        this.activityCaptured = true;
+        const request = createInitializedGameRequest({
+          jobId: `game-${job.game.scheduleIndex}`, game: job.game, captureActivity
+        });
         state.request = { request, job };
+        this.inFlight += 1;
+        this.onActivity({ status: "started", ...job.game, inFlight: this.inFlight });
         state.receive = message => {
           if (message?.type === "game_error") return fail(new Error(`${message.error?.name}: ${message.error?.message}`));
           try {
             const validated = validateGameResult(message, request);
             results[job.index] = validated.ledgerRow;
             this.cache.set(job.key, cacheCombatRow(validated.ledgerRow));
-            this.stats.newlySimulatedGames += 1; completed += 1;
+            this.stats.newlySimulatedGames += 1; completed += 1; this.inFlight -= 1;
+            this.onActivity({ status: "completed", ...job.game, inFlight: this.inFlight,
+              activity: validated.activity });
             this.onProgress({ ...job.game, completed: results.filter(Boolean).length, total: schedule.length, cacheHit: false });
             if (completed === pending.length) { settled = true; resolve(); } else dispatch(state);
           } catch (error) { fail(error); }

@@ -69,9 +69,11 @@ export function createGenerationInitialization({ genomes, engineOptions = { dept
 }
 
 /** Construct a game job containing identities only; genomes stay inside the initialized Worker. */
-export function createInitializedGameRequest({ jobId, game }) {
+export function createInitializedGameRequest({ jobId, game, captureActivity = false }) {
   if (typeof jobId !== "string" || !jobId) throw new Error("Worker job ID must be a non-empty string");
-  return { protocol: WORKER_PROTOCOL_VERSION, type: INITIALIZED_GAME_TYPE, jobId, game: createScheduledGame(game) };
+  if (typeof captureActivity !== "boolean") throw new Error("Worker activity capture flag must be boolean");
+  return { protocol: WORKER_PROTOCOL_VERSION, type: INITIALIZED_GAME_TYPE, jobId,
+    game: createScheduledGame(game), captureActivity };
 }
 
 export function validateInitializedGameRequest(message) {
@@ -148,9 +150,19 @@ export function handleInitializedGameRequest(message, context, runGameImpl = run
   const blueGenome = context.genomes.get(request.game.blueId);
   if (!redGenome || !blueGenome) throw new Error(`Unknown initialized genome in ${request.game.redId} vs ${request.game.blueId}`);
   const fullRequest = createGameRequest({ ...request, redGenome, blueGenome, engineOptions: context.engineOptions });
-  const { ledger } = runGameImpl(redGenome, blueGenome, context.engineOptions);
+  const gameResult = runGameImpl(redGenome, blueGenome,
+    { ...context.engineOptions, captureReplay: request.captureActivity });
+  const { ledger } = gameResult;
   const result = createGameResult(fullRequest, ledger);
-  return { ...result, jobId: request.jobId };
+  const describe = action => {
+    if (action.kind === "move") return `Unit ${action.unitId} moved to (${action.destination.join(", ")})`;
+    if (action.kind === "hold") return `Unit ${action.unitId} held position`;
+    if (action.kind === "poke") return `Pikeman ${action.unitId} poked unit ${action.targetId}`;
+    if (action.kind === "shoot") return `Archer ${action.unitId} shot unit ${action.targetId}`;
+    return `Unit ${action.unitId ?? "?"} performed ${action.kind}`;
+  };
+  return { ...result, jobId: request.jobId,
+    ...(request.captureActivity ? { activity: gameResult.replay.actions.map(describe) } : {}) };
 }
 
 /** Build a replay-producing request which is never valid as an evolutionary ledger job. */

@@ -114,12 +114,16 @@ test("running progress renders live worker fight diagnostics", () => {
   const html = renderLabShell(state, {
     progress: { phase: "stage1_running", cursor: 4, schedule: Array(10).fill({}), completedLedger: [] },
     liveProgress: { completed: 6, total: 10, scheduleIndex: 5, redId: "RED-1", blueId: "BLUE-2",
+      underway: [{ redId: "RED-3", blueId: "BLUE-4", scheduleIndex: 6 }],
+      firstFightActivity: ["Unit 2 moved to (-3, 0)", "Unit 1 held position"],
       observedAt: "2026-08-30T13:00:00.000Z" }
   });
   assert.match(html, /Worker activity/);
   assert.match(html, /Fight 6 of 10 observed/);
-  assert.match(html, /RED-1 vs BLUE-2/);
+  assert.match(html, /RED-3 vs BLUE-4/);
+  assert.match(html, /1 game underway/);
   assert.match(html, /Schedule 5/);
+  assert.match(html, /Unit 2 moved to \(-3, 0\)/);
 });
 
 test("active execution renders a visible animated battle indicator", () => {

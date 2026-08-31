@@ -203,13 +203,25 @@ export class BrowserRunService {
       let previousCheckpoint = checkpoint;
       let liveCompleted = checkpoint.cursor;
       let liveTotal = checkpoint.schedule.length;
+      const underway = new Map();
+      let firstFightActivity = [];
+      const publishActivity = event => this.onLiveProgress({ ...event, completed: liveCompleted,
+        total: liveTotal, underway: [...underway.values()].map(game => ({ redId: game.redId,
+          blueId: game.blueId, scheduleIndex: game.scheduleIndex })), firstFightActivity,
+        observedAt: this.now() });
       session = this.workerSchedule === runWorkerSchedule ? this.workerSessionFactory({
         genomes, workerCount: prepared.workerCount ?? 1, createWorker: this.createWorker,
         engineOptions: prepared.engineOptions,
         onProgress: event => {
           liveCompleted += 1;
-          this.onLiveProgress({ ...event, completed: liveCompleted, total: liveTotal,
-            observedAt: this.now() });
+          publishActivity(event);
+        },
+        onActivity: event => {
+          const key = `${event.stage}:${event.scheduleIndex}`;
+          if (event.status === "started") underway.set(key, event);
+          else underway.delete(key);
+          if (event.activity?.length) firstFightActivity = event.activity;
+          publishActivity(event);
         }
       }) : undefined;
       const executeBatch = session ? async schedule => {

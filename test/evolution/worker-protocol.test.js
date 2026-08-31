@@ -58,3 +58,20 @@ test("initialized worker jobs contain IDs only and resolve immutable generation 
     jobId: "unknown", game: { ...game, redId: "missing" }
   }), context), /Unknown initialized genome/);
 });
+
+test("the first observed initialized fight returns readable move descriptions outside its ledger", () => {
+  const context = {};
+  handleInitializedGameRequest(createGenerationInitialization({ genomes: [redGenome, blueGenome],
+    engineOptions: { depth: 1 } }), context);
+  const request = createInitializedGameRequest({ jobId: "observed", game, captureActivity: true });
+  const result = handleInitializedGameRequest(request, context, () => ({
+    ledger: { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+      trained: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, pokes: { R: 0, B: 0 },
+      killsByAttacker: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } },
+      victimsByType: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, engineRulesVersion: "reach-v1" },
+    replay: { actions: [{ kind: "move", unitId: 2, destination: [-3, 0] },
+      { kind: "hold", unitId: 1 }] }
+  }));
+  assert.deepEqual(result.activity, ["Unit 2 moved to (-3, 0)", "Unit 1 held position"]);
+  assert.equal(result.ledgerRow.activity, undefined);
+});

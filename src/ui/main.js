@@ -46,7 +46,12 @@ function updateProgressElements() {
   const meter = root.querySelector("#progress-meter"); if (meter) meter.value = summary.percent;
   set("#progress-durable", summary.completedGames);
   set("#progress-checkpoint", formatProgressTimestamp(summary.updatedAt));
-  if (liveProgress) set("#worker-activity", `Worker activity — Fight ${liveProgress.completed} of ${liveProgress.total} observed · ${liveProgress.redId} vs ${liveProgress.blueId} · Schedule ${liveProgress.scheduleIndex} · ${formatProgressTimestamp(liveProgress.observedAt)}`);
+  if (liveProgress) {
+    const underway = liveProgress.underway ?? [];
+    set("#underway-fights", `${underway.length} ${underway.length === 1 ? "game" : "games"} underway — ${underway
+      .map(game => `${game.redId} vs ${game.blueId}`).join(" · ") || "awaiting the next dispatch"}`);
+    set("#first-fight-log", (liveProgress.firstFightActivity ?? []).slice(-8).join("\n"));
+  }
 }
 
 function selectedReportView() {
