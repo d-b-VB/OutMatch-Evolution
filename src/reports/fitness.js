@@ -4,6 +4,8 @@ const HUNTER_TARGETS = Object.freeze({
   archer_hunters: { population: "archer_lords", unit: "A" }
 });
 
+export const FITNESS_FORMULA_VERSION = "reach-fitness-v2";
+
 function resultForColor(row, color) {
   const winner = color === "red" ? "R" : "B";
   if (row.outcome === "draw" && (row.winner === "" || row.winner === null)) return "draw";
@@ -135,9 +137,10 @@ export function buildSpecializationStats(rows, populationByGenome) {
   }));
 }
 
-/** Apply the current R29 population-specific specialization multiplier. */
+/** Apply Lord specialization only to positive reproductive success. */
 export function finalFitness(base, population, specialization) {
   if (!Number.isFinite(base)) throw new Error("Base fitness must be finite");
+  if (base <= 0) return base;
   if (population === "horse_lords") return base * specialization.recruitFraction.C * Math.sqrt(specialization.killShare.C);
   if (population === "archer_lords") return base * specialization.recruitFraction.A * Math.sqrt(specialization.killShare.A);
   if (population === "pike_lords") return base * Math.sqrt(specialization.pikesPerGame) * Math.sqrt(specialization.killShare.P);

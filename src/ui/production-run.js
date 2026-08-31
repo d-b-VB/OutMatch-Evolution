@@ -5,10 +5,11 @@ import { planAutomaticMigration } from "../evolution/migration.js";
 import { buildStage1Schedule } from "../evolution/schedule.js";
 import { PERSISTENCE_SCHEMAS } from "../persistence/schema.js";
 import { buildEliminationMatrix } from "../reports/elimination.js";
-import { buildFitnessReport } from "../reports/fitness.js";
+import { buildFitnessReport, FITNESS_FORMULA_VERSION } from "../reports/fitness.js";
 import { buildSimilarityReport } from "../reports/similarity.js";
 import { buildIndividualUnitRates, buildPopulationUnitRates } from "../reports/unit-rates.js";
 import { createTournamentHooks } from "./run-service.js";
+import { buildCombatCache } from "../evolution/worker-pool.js";
 import { validateInterventionDocument } from "./interventions.js";
 
 function rankingsByPopulation(rankings) {
@@ -28,7 +29,8 @@ function parentMetadata(parent) {
     breedingSeed: String(checkpoint.breedingSeed ?? checkpoint.seed),
     nextRecruitingPopulation: checkpoint.nextRecruitingPopulation,
     engineRulesVersion: checkpoint.engineRulesVersion ?? "reach-v1",
-    fitnessFormulaVersion: checkpoint.fitnessFormulaVersion ?? "reach-fitness-v1",
+    // R29 remains an immutable v1 artifact; every newly evaluated child uses the current rule.
+    fitnessFormulaVersion: FITNESS_FORMULA_VERSION,
     breedingPrngVersion: checkpoint.breedingPrngVersion ?? "splitmix64-v1"
   };
 }
@@ -84,6 +86,7 @@ export function prepareProductionGeneration({
     stage1Schedule,
     genomes: childGenomes,
     workerCount: controls.workerCount,
+    cacheSeedEntries: buildCombatCache(parentGenomes, parentLedger.rows),
     tournamentHooks,
     finalizationHooks: {
       rankFinal: tournamentHooks.rankFinal,

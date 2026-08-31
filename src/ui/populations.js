@@ -15,6 +15,16 @@ function metric(record, names) {
   return null;
 }
 
+function unitRateIndex(generation) {
+  return new Map((generation?.reports?.unitRates?.individual ?? []).map(record => [record.id, record]));
+}
+
+function unitTotal(record, field) {
+  const values = record?.[field];
+  return values && ["P", "A", "C"].every(unit => Number.isFinite(values[unit]))
+    ? values.P + values.A + values.C : null;
+}
+
 function parentage(provenance) {
   const parents = [provenance?.fatherId ?? provenance?.father, provenance?.motherId ?? provenance?.mother]
     .filter(value => typeof value === "string");
@@ -41,9 +51,11 @@ export function buildPopulationView(generation, {
   const genomes = generation?.checkpoint?.population ?? [];
   if (!Array.isArray(genomes)) throw new Error("Generation population must be an array");
   const ranks = rankingIndex(generation?.rankings);
+  const unitRates = unitRateIndex(generation);
   const provenance = generation?.checkpoint?.provenance ?? {};
   const rows = genomes.map(genome => {
     const ranking = ranks.get(genome.id) ?? {};
+    const rates = unitRates.get(genome.id);
     const origin = provenance[genome.id] ?? {};
     return {
       id: String(genome.id),
@@ -51,9 +63,10 @@ export function buildPopulationView(generation, {
       population: genome.population,
       rank: Number.isSafeInteger(ranking.rank) ? ranking.rank : null,
       fitness: numeric(ranking.fitness),
-      training: metric(ranking, ["training", "trained", "trainingRate"]),
-      kills: metric(ranking, ["kills", "killRate"]),
-      pokes: metric(ranking, ["pokes", "pokeRate"]),
+      training: unitTotal(rates, "trainedPerGame") ?? metric(ranking, ["training", "trained", "trainingRate"]),
+      kills: unitTotal(rates, "killsPerGame") ?? metric(ranking, ["kills", "killRate"]),
+      pokes: numeric(rates?.pokesPerGame) ?? metric(ranking, ["pokes", "pokeRate"]),
+      unitRates: rates ? structuredClone(rates) : null,
       origin: String(origin.origin ?? "unknown"),
       parentage: parentage(origin)
     };
@@ -71,7 +84,8 @@ export function buildPopulationView(generation, {
     row: rows.find(row => row.id === selectedId),
     genome: structuredClone(selectedGenome),
     provenance: structuredClone(provenance[selectedId] ?? {}),
-    fitness: structuredClone(ranks.get(selectedId) ?? {})
+    fitness: structuredClone(ranks.get(selectedId) ?? {}),
+    unitRates: structuredClone(unitRates.get(selectedId) ?? null)
   } : null;
   return { summaries: R29_POPULATIONS.map(name => ({ population: name, count: counts[name] })), rows: visible, detail };
 }

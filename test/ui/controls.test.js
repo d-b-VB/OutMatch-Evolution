@@ -5,9 +5,14 @@ import {
   controlsFromForm,
   DEFAULT_LAB_CONTROLS,
   LAB_CONTROLS_SCHEMA,
+  recommendedWorkerCount,
   reviewLabControls,
   validateLabControls
 } from "../../src/ui/controls.js";
+
+test("worker recommendation scales with hardware while respecting the safe cap", () => {
+  assert.deepEqual([1, 2, 4, 6, 8, 12, 32].map(recommendedWorkerCount), [1, 1, 3, 4, 6, 10, 12]);
+});
 
 test("control form values normalize to a versioned deterministic model", () => {
   assert.deepEqual(controlsFromForm({

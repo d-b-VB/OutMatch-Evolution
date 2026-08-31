@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { isMainThread, parentPort, workerData, Worker } from "node:worker_threads";
 import { runGame } from "../src/engine/board.js";
+import { runGame as runFastGame } from "../src/engine/fast-board.js";
 
 const root = new URL("../", import.meta.url);
 
@@ -53,7 +54,8 @@ if (!isMainThread) {
   const genomes = new Map(checkpoint.population.map(genome => [genome.id, genome]));
   const failures = [];
   for (const row of workerData.rows) {
-    const game = runGame(genomes.get(row.redId), genomes.get(row.blueId));
+    const engine = workerData.engine === "fast" ? runFastGame : runGame;
+    const game = engine(genomes.get(row.redId), genomes.get(row.blueId));
     const expected = expectedLedger(row);
     const actual = comparableLedger(game.ledger);
     const aggregateMatches = JSON.stringify(actual) === JSON.stringify(expected);
@@ -66,6 +68,7 @@ if (!isMainThread) {
   parentPort.postMessage({ checked: workerData.rows.length, failures });
 } else {
   const allRows = readRows();
+  const engine = process.argv.includes("--engine=fast") ? "fast" : "reference";
   const limit = Math.max(1, Math.min(allRows.length, parseOption("limit", allRows.length)));
   const rows = allRows.slice(0, limit);
   const workerCount = Math.max(1, Math.min(rows.length, parseOption("workers", Math.min(4, os.availableParallelism()))));
@@ -73,7 +76,7 @@ if (!isMainThread) {
   rows.forEach((row, index) => groups[index % workerCount].push(row));
   const started = Date.now();
   const results = await Promise.all(groups.map(group => new Promise((resolve, reject) => {
-    const worker = new Worker(new URL(import.meta.url), { workerData: { rows: group } });
+    const worker = new Worker(new URL(import.meta.url), { workerData: { rows: group, engine } });
     worker.once("message", resolve);
     worker.once("error", reject);
     worker.once("exit", code => {
@@ -86,6 +89,6 @@ if (!isMainThread) {
     console.error(JSON.stringify({ checked, failures }, null, 2));
     process.exitCode = 1;
   } else {
-    console.log(`Matched ${checked}/${allRows.length} golden games in ${((Date.now() - started) / 1000).toFixed(1)}s using ${workerCount} workers.`);
+    console.log(`${engine} matched ${checked}/${allRows.length} golden games in ${((Date.now() - started) / 1000).toFixed(1)}s using ${workerCount} workers.`);
   }
 }

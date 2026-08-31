@@ -8,6 +8,7 @@ import { INTERVENTIONS_SCHEMA } from "../../src/ui/interventions.js";
 
 test("production preparer builds the real child, canonical schedule, and immutable record hooks", async () => {
   const checkpoint = JSON.parse(readFileSync("seed/r29/Reach_R29_Complete_Checkpoint.json", "utf8"));
+  const originalCheckpoint = structuredClone(checkpoint);
   const similarityBaseline = JSON.parse(readFileSync("seed/genetic_similarity_baseline_r29.json", "utf8"));
   const mutationRangeDocument = JSON.parse(readFileSync("seed/mutation_ranges.json", "utf8"));
   const fixture = JSON.parse(execFileSync("unzip", ["-p", "OutMatch_Reach_Codex_Bootstrap.zip",
@@ -29,6 +30,8 @@ test("production preparer builds the real child, canonical schedule, and immutab
     now: () => "2026-08-30T00:00:00.000Z"
   });
   assert.equal(prepared.childCandidate.population.length, 343);
+  assert.deepEqual(checkpoint, originalCheckpoint);
+  assert.equal(prepared.childCandidate.fitnessFormulaVersion, "reach-fitness-v2");
   assert.equal(prepared.stage1Schedule.length, 43_218);
   assert.equal(prepared.genomes.length, 343);
   assert.equal(prepared.workerCount, 2);
