@@ -196,6 +196,34 @@ export function validateIncrementalRunProgressRecord(record, previous) {
   return record;
 }
 
+/** Validate only one append-only running checkpoint against a previously full-validated record. */
+export function validateIncrementalRunProgressRecord(record, previous) {
+  for (const key of ["schema", "runId", "parentGeneration", "parentFingerprint", "targetGeneration",
+    "controlsHash", "interventionsHash", "breedingSeed", "breedingPrngVersion", "phase"]) {
+    if (record?.[key] !== previous?.[key]) throw new Error(`Incremental checkpoint changed ${key}`);
+  }
+  if (!record || record.schema !== PERSISTENCE_SCHEMAS.progress || !PROGRESS_PHASES.includes(record.phase)) {
+    throw new Error("Incremental checkpoint has invalid identity or phase");
+  }
+  requiredIsoDate(record.updatedAt, "Progress record.updatedAt");
+  if (record.schedule?.length !== previous.schedule?.length || record.cursor < previous.cursor
+    || record.cursor > record.schedule.length || record.partialLedger?.length !== record.cursor) {
+    throw new Error("Incremental checkpoint is not an append-only schedule prefix");
+  }
+  const appended = record.partialLedger.slice(previous.cursor);
+  validateGameRows(appended, "Incremental progress ledger");
+  for (let index = 0; index < appended.length; index += 1) {
+    const scheduled = previous.schedule[previous.cursor + index];
+    const result = appended[index];
+    if (scheduled.stage !== result.stage || scheduled.scheduleIndex !== result.scheduleIndex
+      || scheduled.redId !== result.redId || scheduled.blueId !== result.blueId
+      || (scheduled.challengerIteration ?? null) !== (result.challengerIteration ?? null)) {
+      throw new Error("Incremental checkpoint result does not match its schedule");
+    }
+  }
+  return record;
+}
+
 export function validateSettingsRecord(record) {
   if (record?.schema !== PERSISTENCE_SCHEMAS.settings) throw new Error("Settings record has an unsupported schema");
   requiredString(record.settingsId, "Settings record.settingsId");
