@@ -25,6 +25,7 @@ export async function runDurableTournamentStages({
   checkpoint,
   expected,
   executeGame,
+  executeBatch,
   saveCheckpoint,
   rankStage1,
   buildStage2Schedule,
@@ -49,7 +50,7 @@ export async function runDurableTournamentStages({
 
   if (state.phase === "stage1_running") {
     const execution = await executeResumableSchedule({
-      checkpoint: state, executeGame, saveCheckpoint, shouldPause,
+      checkpoint: state, executeGame, executeBatch, saveCheckpoint, shouldPause,
       checkpointInterval, checkpointRetries, now
     });
     state = execution.checkpoint;
@@ -72,7 +73,7 @@ export async function runDurableTournamentStages({
 
   if (state.phase === "stage2_running") {
     const execution = await executeResumableSchedule({
-      checkpoint: state, executeGame, saveCheckpoint, shouldPause,
+      checkpoint: state, executeGame, executeBatch, saveCheckpoint, shouldPause,
       checkpointInterval, checkpointRetries, now
     });
     state = execution.checkpoint;
@@ -97,7 +98,7 @@ export async function runDurableTournamentStages({
     while (true) {
       if (state.schedule.length > 0) {
         const execution = await executeResumableSchedule({
-          checkpoint: state, executeGame, saveCheckpoint, shouldPause,
+          checkpoint: state, executeGame, executeBatch, saveCheckpoint, shouldPause,
           checkpointInterval, checkpointRetries, now
         });
         state = execution.checkpoint;

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CompletedGenerationRepository,
+  CombatCacheRepository,
   LedgerRepository,
   ProgressRepository,
   ReplayRepository,
@@ -13,6 +14,7 @@ import {
   withTransaction
 } from "../../src/persistence/repositories.js";
 import { PERSISTENCE_SCHEMAS, STORE_NAMES } from "../../src/persistence/schema.js";
+import { runDurableTournamentStages } from "../../src/persistence/durable-tournament.js";
 
 class Events {
   constructor() { this.listeners = new Map(); }
@@ -100,13 +102,15 @@ class MemoryDatabase {
     this.keyPaths[STORE_NAMES.ledgers] = "ledgerId";
     this.keyPaths[STORE_NAMES.progress] = "runId";
     this.keyPaths[STORE_NAMES.replays] = "replayId";
+    this.keyPaths[STORE_NAMES.combatCache] = "cacheKey";
     this.data = {
       [STORE_NAMES.runs]: new Map(),
       [STORE_NAMES.settings]: new Map(),
       [STORE_NAMES.generations]: new Map(),
       [STORE_NAMES.ledgers]: new Map(),
       [STORE_NAMES.progress]: new Map(),
-      [STORE_NAMES.replays]: new Map()
+      [STORE_NAMES.replays]: new Map(),
+      [STORE_NAMES.combatCache]: new Map()
     };
   }
   transaction(names) {
@@ -184,6 +188,7 @@ function progress(runId, cursor = 1) {
     phase: "stage1_running",
     schedule,
     partialLedger: schedule.slice(0, cursor),
+    completedLedger: [],
     cursor,
     tentativeElites: [],
     challengerHistory: [],
@@ -352,6 +357,32 @@ test("progress checkpoints save, replace, load, and clear by run", async () => {
   assert.equal(await repository.get("run-one"), undefined);
 });
 
+test("pre-v2 incomplete progress is normalized on load and resumes from its durable prefix", async () => {
+  const database = new MemoryDatabase();
+  const legacy = { ...progress("run-one", 1), childCandidate: { generation: "ReachR30", fingerprint: "child" } };
+  delete legacy.completedLedger;
+  delete legacy.tentativeElites;
+  delete legacy.challengerHistory;
+  database.data[STORE_NAMES.progress].set(JSON.stringify("run-one"), structuredClone(legacy));
+
+  const loaded = await new ProgressRepository(database).get("run-one");
+  assert.deepEqual(loaded.completedLedger, []);
+  assert.deepEqual(loaded.tentativeElites, []);
+  assert.deepEqual(loaded.challengerHistory, []);
+  assert.deepEqual(loaded.childCandidate, legacy.childCandidate);
+  const executed = [];
+  const result = await runDurableTournamentStages({
+    checkpoint: loaded,
+    expected: Object.fromEntries(["runId", "parentGeneration", "parentFingerprint", "targetGeneration",
+      "controlsHash", "interventionsHash", "breedingSeed", "breedingPrngVersion"].map(key => [key, loaded[key]])),
+    executeGame: async game => { executed.push(game.scheduleIndex); return game; },
+    saveCheckpoint: async () => {}, rankStage1: async () => [], buildStage2Schedule: async () => [],
+    rankStage2: async () => [], planChallengerIteration: async () => ({ challengers: [], schedule: [], rankings: [] })
+  });
+  assert.deepEqual(executed, [1]);
+  assert.equal(result.status, "ready_to_finalize");
+});
+
 test("progress writes reject invalid resumable state before database I/O", async () => {
   const database = new MemoryDatabase();
   const repository = new ProgressRepository(database);
@@ -389,6 +420,18 @@ test("replays persist immutably and list newest-first by run", async () => {
   assert.equal((await repository.get("older")).replayId, "older");
   assert.deepEqual((await repository.list("run-one")).map(item => item.replayId), ["newer", "older"]);
   await assert.rejects(repository.save(replay("run-one", "older")), /already exists/);
+});
+
+test("complete exact combat results persist across repository instances", async () => {
+  const database = new MemoryDatabase();
+  const combat = { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+    engineRulesVersion: "reach-v1" };
+  for (const color of ["red", "blue"]) for (const field of [
+    "P", "A", "C", "Pokes", "KillByP", "KillByA", "KillByC", "VictimP", "VictimA", "VictimC"
+  ]) combat[`${color}${field}`] = 0;
+  await new CombatCacheRepository(database).save(new Map([["key", combat]]));
+  const loaded = await new CombatCacheRepository(database).load();
+  assert.deepEqual(loaded.get("key"), combat);
 });
 
 test("run cleanup removes owned artifacts without affecting another run", async () => {

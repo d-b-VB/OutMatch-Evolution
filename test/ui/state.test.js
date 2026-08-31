@@ -105,8 +105,48 @@ test("durable progress renders phase, safe cursor, and checkpoint metadata", () 
   assert.match(html, /Challenger cleanup/);
   assert.match(html, /2 \/ 4 current-stage games/);
   assert.match(html, /value="50"/);
-  assert.match(html, /<dd>5<\/dd>/);
+  assert.match(html, /<dd id="progress-durable">5<\/dd>/);
   assert.match(html, /2026-08-29 12:30:00 UTC/);
+});
+
+test("running progress renders live worker fight diagnostics", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 4, schedule: Array(10).fill({}), completedLedger: [] },
+    liveProgress: { completed: 6, total: 10, scheduleIndex: 5, redId: "RED-1", blueId: "BLUE-2",
+      underway: [{ redId: "RED-3", blueId: "BLUE-4", scheduleIndex: 6 }],
+      firstFightActivity: ["Unit 2 moved to (-3, 0)", "Unit 1 held position"],
+      observedAt: "2026-08-30T13:00:00.000Z" }
+  });
+  assert.match(html, /Worker activity/);
+  assert.match(html, /Fight 6 of 10 observed/);
+  assert.match(html, /RED-3 vs BLUE-4/);
+  assert.match(html, /1 game underway/);
+  assert.match(html, /Schedule 5/);
+  assert.match(html, /Unit 2 moved to \(-3, 0\)/);
+});
+
+test("active execution renders a visible animated battle indicator", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 4, schedule: Array(10).fill({}), completedLedger: [] },
+    runOperation: { status: "running", errorKind: null, errorMessage: null, safeCursor: null, stopRequested: false }
+  });
+  assert.match(html, /battle-orbit/);
+  assert.match(html, /Tournament simulation active/);
+  assert.match(html, /🐎/);
+  assert.match(html, /🏹/);
+  assert.match(html, /🛡️/);
+});
+
+test("stored progress clearly says when no fights are running", () => {
+  const state = createLabState({ runs, generations });
+  const html = renderLabShell(state, {
+    progress: { phase: "stage1_running", cursor: 371, schedule: Array(400).fill({}), completedLedger: [] }
+  });
+  assert.match(html, /Execution is paused/);
+  assert.match(html, /No fights are running/);
+  assert.match(html, /Press Resume/);
 });
 
 test("run controls render phase-aware actions and escaped failure details", () => {
@@ -124,6 +164,16 @@ test("run controls render phase-aware actions and escaped failure details", () =
   assert.match(html, /Last safe cursor: 12/);
   assert.doesNotMatch(html, /write <failed>/);
   assert.match(html, /write &lt;failed&gt;/);
+});
+
+test("unsafe legacy progress offers progress-only recovery", () => {
+  const html = renderLabShell(createLabState({ runs, generations }), {
+    progressRecoveryError: "Cannot recover <checkpoint>"
+  });
+  assert.match(html, /Incomplete progress cannot be resumed safely/);
+  assert.match(html, /Discard incomplete progress and restart generation/);
+  assert.match(html, /Completed generations and their ledgers will not be deleted/);
+  assert.match(html, /Cannot recover &lt;checkpoint&gt;/);
 });
 
 test("archived report matrices render with safe download controls", () => {

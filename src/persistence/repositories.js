@@ -1,13 +1,17 @@
 import { transactionDone, requestResult } from "./database.js";
 import {
+  PERSISTENCE_SCHEMAS,
   STORE_NAMES,
   validateCompletedGenerationRecord,
   validateLedgerRecord,
   validateRunRecord,
   validateRunProgressRecord,
+  validateIncrementalRunProgressRecord,
   validateReplayRecord,
+  validateCombatCacheRecord,
   validateSettingsRecord
 } from "./schema.js";
+import { normalizePersistedProgressRecord } from "./resume.js";
 
 function requireId(value, label) {
   if (typeof value !== "string" || value.length === 0) throw new Error(`${label} must be a non-empty string`);
@@ -193,10 +197,19 @@ export class ProgressRepository {
     });
   }
 
+  async saveIncremental(record, previousRecord) {
+    validateIncrementalRunProgressRecord(record, previousRecord);
+    return withTransaction(this.database, STORE_NAMES.progress, "readwrite", async transaction => {
+      await requestResult(transaction.objectStore(STORE_NAMES.progress).put(record));
+      return record;
+    });
+  }
+
   async get(runId) {
     requireId(runId, "Run ID");
-    const record = await withTransaction(this.database, STORE_NAMES.progress, "readonly", transaction =>
+    const stored = await withTransaction(this.database, STORE_NAMES.progress, "readonly", transaction =>
       requestResult(transaction.objectStore(STORE_NAMES.progress).get(runId)));
+    const record = normalizePersistedProgressRecord(stored);
     if (record !== undefined) validateRunProgressRecord(record);
     return record;
   }
@@ -205,6 +218,29 @@ export class ProgressRepository {
     requireId(runId, "Run ID");
     return withTransaction(this.database, STORE_NAMES.progress, "readwrite", async transaction => {
       await requestResult(transaction.objectStore(STORE_NAMES.progress).delete(runId));
+    });
+  }
+}
+
+export class CombatCacheRepository {
+  constructor(database) { this.database = database; }
+
+  async load() {
+    const records = await withTransaction(this.database, STORE_NAMES.combatCache, "readonly", transaction =>
+      requestResult(transaction.objectStore(STORE_NAMES.combatCache).getAll()));
+    records.forEach(validateCombatCacheRecord);
+    return new Map(records.map(record => [record.cacheKey, record.combat]));
+  }
+
+  async save(entries) {
+    if (!(entries instanceof Map) || entries.size === 0) return;
+    const records = [...entries].map(([cacheKey, combat]) => ({
+      schema: PERSISTENCE_SCHEMAS.combatCache, cacheKey, combat
+    }));
+    records.forEach(validateCombatCacheRecord);
+    await withTransaction(this.database, STORE_NAMES.combatCache, "readwrite", async transaction => {
+      const store = transaction.objectStore(STORE_NAMES.combatCache);
+      for (const record of records) await requestResult(store.put(record));
     });
   }
 }
@@ -226,6 +262,24 @@ export async function saveCompletedGenerationWithLedger(database, generation, le
     await addImmutable(transaction.objectStore(STORE_NAMES.generations), generation,
       `Completed generation ${generation.runId}/${generation.generation}`);
     return { generation, ledger };
+  });
+}
+
+/** Create a run and its bundled immutable baseline in one transaction. */
+export async function initializeRunWithGeneration(database, run, generation, ledger) {
+  validateRunRecord(run);
+  validateGenerationLedgerPair(generation, ledger);
+  if (run.runId !== generation.runId) throw new Error("Run and baseline generation identities do not match");
+  const stores = [STORE_NAMES.runs, STORE_NAMES.generations, STORE_NAMES.ledgers];
+  return withTransaction(database, stores, "readwrite", async transaction => {
+    const runStore = transaction.objectStore(STORE_NAMES.runs);
+    const existing = await requestResult(runStore.get(run.runId));
+    if (existing !== undefined) return { run: existing, initialized: false };
+    await addImmutable(runStore, run, `Run ${run.runId}`);
+    await addImmutable(transaction.objectStore(STORE_NAMES.ledgers), ledger, `Ledger ${ledger.ledgerId}`);
+    await addImmutable(transaction.objectStore(STORE_NAMES.generations), generation,
+      `Completed generation ${generation.runId}/${generation.generation}`);
+    return { run, generation, ledger, initialized: true };
   });
 }
 

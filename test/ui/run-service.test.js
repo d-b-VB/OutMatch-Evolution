@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PERSISTENCE_SCHEMAS } from "../../src/persistence/schema.js";
-import { BrowserRunService, buildInitialRunProgress } from "../../src/ui/run-service.js";
+import { BrowserRunService, buildInitialRunProgress, DEFAULT_CHECKPOINT_BATCH_SIZE } from "../../src/ui/run-service.js";
 
 const parent = { generation: "ReachR29", fingerprint: "parent-fingerprint" };
 const controlReview = {
@@ -14,6 +14,10 @@ const games = [0, 1].map(scheduleIndex => ({
   stage: "stage1_core", scheduleIndex, redId: `red-${scheduleIndex}`, blueId: `blue-${scheduleIndex}`,
   challengerIteration: null
 }));
+
+test("production checkpoint batches default to 256 independently of Worker count", () => {
+  assert.equal(DEFAULT_CHECKPOINT_BATCH_SIZE, 256);
+});
 
 class MemoryProgress {
   constructor(record = null) { this.record = record; this.saves = []; }
@@ -86,8 +90,11 @@ test("initial progress binds reviewed controls, intervention document, seed, and
 
 test("browser run service completes a reduced generation through one final commit", async () => {
   const commits = [];
+  const checkpoints = [];
   const progress = new MemoryProgress();
-  const result = await service(progress, prepared(commits)).start({
+  const result = await service(progress, prepared(commits), {
+    onCheckpoint: checkpoint => checkpoints.push(checkpoint)
+  }).start({
     runId: "run-one", parent, controlReview, breedingSeed: "seed-one"
   });
   assert.equal(result.status, "complete");
@@ -95,6 +102,8 @@ test("browser run service completes a reduced generation through one final commi
   assert.deepEqual(result.ledger.rows.map(row => row.scheduleIndex), [0, 1]);
   assert.equal(result.generation.fingerprint, "child-fingerprint");
   assert.ok(progress.saves.some(record => record.phase === "finalizing"));
+  assert.ok(checkpoints.length > 1);
+  assert.equal(checkpoints.at(-1).phase, "finalizing");
 });
 
 test("pause, reopen, and resume preserves ledger and child fingerprint", async () => {
