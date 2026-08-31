@@ -1,6 +1,9 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
+import { execFileSync } from "node:child_process";
+
+execFileSync(process.execPath, ["scripts/materialize-r29-runtime.mjs"], { stdio: "inherit" });
 
 const root = process.env.SERVE_ROOT ? join(process.cwd(), process.env.SERVE_ROOT) : process.cwd();
 const basePath = `/${(process.env.BASE_PATH ?? "").replace(/^\/+|\/+$/g, "")}`.replace(/\/$/, "");
