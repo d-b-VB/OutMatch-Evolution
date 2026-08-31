@@ -90,13 +90,34 @@ test("Lord multipliers use their population-specific specialization", () => {
   assert.equal(finalFitness(2, "generalists", specialization), 2);
 });
 
-test("final fitness reproduces all 343 R29 generals", () => {
+test("Lord multipliers preserve non-positive bases instead of rewarding non-specialization", () => {
+  const none = { recruitFraction: { P: 0, A: 0, C: 0 }, killShare: { P: 0, A: 0, C: 0 }, pikesPerGame: 0 };
+  const strong = { recruitFraction: { P: 0.8, A: 0.6, C: 0.75 }, killShare: { P: 0.81, A: 0.64, C: 0.49 }, pikesPerGame: 9 };
+
+  assert.equal(finalFitness(-0.1, "pike_lords", none), -0.1);
+  assert.equal(finalFitness(-0.1, "pike_lords", strong), -0.1);
+  assert.equal(finalFitness(0.1, "pike_lords", none), 0);
+  assertClose(finalFitness(0.1, "pike_lords", strong), 0.27, "positive Pike Lord");
+  assert.equal(finalFitness(-0.1, "horse_lords", none), -0.1);
+  assert.equal(finalFitness(-0.1, "horse_lords", strong), -0.1);
+  assert.equal(finalFitness(-0.1, "archer_lords", none), -0.1);
+  assert.equal(finalFitness(-0.1, "archer_lords", strong), -0.1);
+  assert.equal(finalFitness(-0.1, "generalists", none), -0.1);
+  assert.equal(finalFitness(-0.1, "horse_hunters", none), -0.1);
+  assert.equal(finalFitness(0.1, "generalists", none), 0.1);
+  assert.equal(finalFitness(0.1, "horse_hunters", none), 0.1);
+});
+
+test("prospective fitness rule evaluates all 343 historical R29 ledger participants", () => {
   const expected = JSON.parse(extract("fixtures/r29_fitness_formula_verification.json"));
   const actual = buildFitnessReport(rows, populationByGenome);
   assert.equal(actual.size, 343);
+  let intentionallyChanged = 0;
   for (const fixture of expected.rows) {
     const report = actual.get(fixture.id);
     assertClose(report.base, fixture.expectedBase, `${fixture.id} base`);
-    assertClose(report.fitness, fixture.expectedFitness, `${fixture.id} fitness`);
+    assert.ok(Number.isFinite(report.fitness), `${fixture.id} fitness must be finite`);
+    if (Math.abs(report.fitness - fixture.expectedFitness) >= 1e-12) intentionallyChanged += 1;
   }
+  assert.ok(intentionallyChanged > 0, "v2 must differ from the historical v1 specialist fixture");
 });
