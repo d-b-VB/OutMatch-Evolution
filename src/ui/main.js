@@ -15,6 +15,7 @@ import { prepareProductionGeneration } from "./production-run.js";
 import { BrowserRunService } from "./run-service.js";
 import { createRunOperation, RunOperationController } from "./run-operation.js";
 import { loadCanonicalR29 } from "../baseline/runtime.js";
+import { formatProgressTimestamp, summarizeRunProgress } from "./progress.js";
 
 const root = document.querySelector("#app");
 let state;
@@ -33,6 +34,20 @@ let runOperation = createRunOperation();
 let runController;
 let evolutionResources;
 let liveProgress;
+let lastLiveRender = 0;
+
+function updateProgressElements() {
+  const summary = summarizeRunProgress(progress);
+  if (!summary) return;
+  const set = (selector, value) => { const element = root.querySelector(selector); if (element) element.textContent = value; };
+  set("#progress-count", summary.currentTotal
+    ? `${summary.currentCompleted} / ${summary.currentTotal} current-stage games` : "Between deterministic stages");
+  set("#progress-percent", `${summary.percent}%`);
+  const meter = root.querySelector("#progress-meter"); if (meter) meter.value = summary.percent;
+  set("#progress-durable", summary.completedGames);
+  set("#progress-checkpoint", formatProgressTimestamp(summary.updatedAt));
+  if (liveProgress) set("#worker-activity", `Worker activity — Fight ${liveProgress.completed} of ${liveProgress.total} observed · ${liveProgress.redId} vs ${liveProgress.blueId} · Schedule ${liveProgress.scheduleIndex} · ${formatProgressTimestamp(liveProgress.observedAt)}`);
+}
 
 function selectedReportView() {
   const generation = state.generations.find(item => item.runId === state.selectedRunId
@@ -360,12 +375,15 @@ async function bootstrap() {
     const runService = new BrowserRunService({
       database,
       progressRepository: repositories.progress,
-      onCheckpoint: checkpoint => { progress = checkpoint; paint(); },
+      onCheckpoint: checkpoint => {
+        const phaseChanged = progress?.phase !== checkpoint.phase;
+        progress = checkpoint;
+        if (phaseChanged) paint(); else updateProgressElements();
+      },
       onLiveProgress: update => {
         liveProgress = update;
-        const remaining = update.total - update.completed;
-        if (update.completed <= 8 || update.completed % 25 === 0
-          || (remaining > 0 && (remaining & (remaining - 1)) === 0)) paint();
+        const current = Date.now();
+        if (current - lastLiveRender >= 250) { lastLiveRender = current; updateProgressElements(); }
       },
       prepareGeneration: productionContext,
       restoreGeneration: async checkpoint => {

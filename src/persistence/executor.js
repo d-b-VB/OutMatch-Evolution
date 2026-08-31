@@ -51,7 +51,8 @@ export async function executeResumableSchedule({
     throw new Error("Checkpoint retries must be a non-negative integer");
   }
   assertSafeCheckpointBoundary(checkpoint);
-  const state = structuredClone(checkpoint);
+  const state = { ...checkpoint, schedule: checkpoint.schedule,
+    partialLedger: checkpoint.partialLedger.slice(), completedLedger: checkpoint.completedLedger };
   let completedSinceSave = 0;
   let safeCursor = state.cursor;
 
@@ -61,7 +62,7 @@ export async function executeResumableSchedule({
     let attempt = 0;
     while (true) {
       try {
-        await saveCheckpoint(structuredClone(state));
+        await saveCheckpoint({ ...state, partialLedger: state.partialLedger.slice() });
         safeCursor = state.cursor;
         break;
       } catch (error) {

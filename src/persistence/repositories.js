@@ -5,6 +5,7 @@ import {
   validateLedgerRecord,
   validateRunRecord,
   validateRunProgressRecord,
+  validateIncrementalRunProgressRecord,
   validateReplayRecord,
   validateSettingsRecord
 } from "./schema.js";
@@ -187,6 +188,14 @@ export class ProgressRepository {
 
   async save(record) {
     validateRunProgressRecord(record);
+    return withTransaction(this.database, STORE_NAMES.progress, "readwrite", async transaction => {
+      await requestResult(transaction.objectStore(STORE_NAMES.progress).put(record));
+      return record;
+    });
+  }
+
+  async saveIncremental(record, previousRecord) {
+    validateIncrementalRunProgressRecord(record, previousRecord);
     return withTransaction(this.database, STORE_NAMES.progress, "readwrite", async transaction => {
       await requestResult(transaction.objectStore(STORE_NAMES.progress).put(record));
       return record;

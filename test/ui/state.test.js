@@ -105,7 +105,7 @@ test("durable progress renders phase, safe cursor, and checkpoint metadata", () 
   assert.match(html, /Challenger cleanup/);
   assert.match(html, /2 \/ 4 current-stage games/);
   assert.match(html, /value="50"/);
-  assert.match(html, /<dd>5<\/dd>/);
+  assert.match(html, /<dd id="progress-durable">5<\/dd>/);
   assert.match(html, /2026-08-29 12:30:00 UTC/);
 });
 

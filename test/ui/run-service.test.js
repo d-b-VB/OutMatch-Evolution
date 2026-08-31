@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PERSISTENCE_SCHEMAS } from "../../src/persistence/schema.js";
-import { BrowserRunService, buildInitialRunProgress } from "../../src/ui/run-service.js";
+import { BrowserRunService, buildInitialRunProgress, DEFAULT_CHECKPOINT_BATCH_SIZE } from "../../src/ui/run-service.js";
 
 const parent = { generation: "ReachR29", fingerprint: "parent-fingerprint" };
 const controlReview = {
@@ -14,6 +14,10 @@ const games = [0, 1].map(scheduleIndex => ({
   stage: "stage1_core", scheduleIndex, redId: `red-${scheduleIndex}`, blueId: `blue-${scheduleIndex}`,
   challengerIteration: null
 }));
+
+test("production checkpoint batches default to 256 independently of Worker count", () => {
+  assert.equal(DEFAULT_CHECKPOINT_BATCH_SIZE, 256);
+});
 
 class MemoryProgress {
   constructor(record = null) { this.record = record; this.saves = []; }
