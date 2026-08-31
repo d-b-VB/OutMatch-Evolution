@@ -8,6 +8,7 @@ import {
   STORE_NAMES,
   validateCompletedGenerationRecord,
   validateLedgerRecord,
+  validateIncrementalRunProgressRecord,
   validateRunProgressRecord,
   validateRunRecord,
   validateSettingsRecord
@@ -58,6 +59,21 @@ test("progress records preserve deterministic resume inputs and bounded cursor",
   assert.doesNotThrow(() => validateRunProgressRecord(structuredClone(record)));
   assert.throws(() => validateRunProgressRecord({ ...record, cursor: 2 }), /outside its schedule/);
   assert.throws(() => validateRunProgressRecord({ ...record, phase: "unknown" }), /unknown phase/);
+});
+
+test("incremental progress validation accepts only an appended matching schedule prefix", () => {
+  const schedule = [0, 1].map(scheduleIndex => ({ stage: "stage1_core", scheduleIndex,
+    redId: `red-${scheduleIndex}`, blueId: `blue-${scheduleIndex}` }));
+  const base = { schema: PERSISTENCE_SCHEMAS.progress, runId: "run-1", parentGeneration: "ReachR29",
+    parentFingerprint: "fingerprint", targetGeneration: "ReachR30", controlsHash: "controls",
+    interventionsHash: "interventions", breedingSeed: "1", breedingPrngVersion: "splitmix64-v1",
+    updatedAt: timestamp, phase: "stage1_running", schedule, cursor: 0, partialLedger: [],
+    tentativeElites: [], challengerHistory: [], childCandidate: null };
+  const next = { ...base, cursor: 2, partialLedger: schedule, updatedAt: "2026-08-27T12:01:00.000Z" };
+  assert.equal(validateIncrementalRunProgressRecord(next, base), next);
+  assert.throws(() => validateIncrementalRunProgressRecord({ ...next, controlsHash: "changed" }, base), /changed controlsHash/);
+  assert.throws(() => validateIncrementalRunProgressRecord({ ...next,
+    partialLedger: [schedule[0], { ...schedule[1], blueId: "wrong" }] }, base), /does not match/);
 });
 
 test("run and settings records validate independently and all records round-trip", () => {

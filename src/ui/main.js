@@ -14,6 +14,8 @@ import { openModalWithFocusReturn } from "./accessibility.js";
 import { prepareProductionGeneration } from "./production-run.js";
 import { BrowserRunService } from "./run-service.js";
 import { createRunOperation, RunOperationController } from "./run-operation.js";
+import { loadCanonicalR29 } from "../baseline/runtime.js";
+import { formatProgressTimestamp, summarizeRunProgress } from "./progress.js";
 
 const root = document.querySelector("#app");
 let state;
@@ -31,6 +33,21 @@ let matchup = { redId: null, blueId: null, history: null, replays: [], selectedR
 let runOperation = createRunOperation();
 let runController;
 let evolutionResources;
+let liveProgress;
+let lastLiveRender = 0;
+
+function updateProgressElements() {
+  const summary = summarizeRunProgress(progress);
+  if (!summary) return;
+  const set = (selector, value) => { const element = root.querySelector(selector); if (element) element.textContent = value; };
+  set("#progress-count", summary.currentTotal
+    ? `${summary.currentCompleted} / ${summary.currentTotal} current-stage games` : "Between deterministic stages");
+  set("#progress-percent", `${summary.percent}%`);
+  const meter = root.querySelector("#progress-meter"); if (meter) meter.value = summary.percent;
+  set("#progress-durable", summary.completedGames);
+  set("#progress-checkpoint", formatProgressTimestamp(summary.updatedAt));
+  if (liveProgress) set("#worker-activity", `Worker activity — Fight ${liveProgress.completed} of ${liveProgress.total} observed · ${liveProgress.redId} vs ${liveProgress.blueId} · Schedule ${liveProgress.scheduleIndex} · ${formatProgressTimestamp(liveProgress.observedAt)}`);
+}
 
 function selectedReportView() {
   const generation = state.generations.find(item => item.runId === state.selectedRunId
@@ -78,6 +95,7 @@ function nextBreedingSeed(parent) {
 async function completeRunResult(result) {
   progress = result.checkpoint ?? null;
   if (result.status !== "complete") return result;
+  liveProgress = null;
   await refresh(state.selectedRunId);
   state = selectGeneration(state, result.generation.generation);
   settings = await persistLabSelection(repositories.settings, state, settings);
@@ -92,6 +110,7 @@ async function completeRunResult(result) {
 async function runOneGeneration() {
   const parent = selectedGenerationRecord();
   if (!parent || !controlReview) throw new Error("Select a parent and review controls before running");
+  liveProgress = null;
   return completeRunResult(await runController.start({
     runId: state.selectedRunId, parent, controlReview, breedingSeed: nextBreedingSeed(parent),
     breedingPrngVersion: parent.checkpoint?.breedingPrngVersion ?? "splitmix64-v1"
@@ -110,7 +129,7 @@ async function refresh(preferredRunId = null) {
 
 function paint() {
   root.innerHTML = renderLabShell(state, {
-    notice, storage, draftControls, controlReview, progress, selectedReportId, populationOptions, matchup, runOperation
+    notice, storage, draftControls, controlReview, progress, liveProgress, selectedReportId, populationOptions, matchup, runOperation
   });
   const runSelect = root.querySelector("#run-select");
   const generationSelect = root.querySelector("#generation-select");
@@ -154,7 +173,7 @@ function paint() {
   root.querySelector("#pause-run-button")?.addEventListener("click", () => { runController.requestPause(); paint(); });
   root.querySelector("#stop-run-button")?.addEventListener("click", () => { runController.stopAfterGeneration(); paint(); });
   root.querySelector("#resume-run-button")?.addEventListener("click", async () => {
-    try { await completeRunResult(await runController.resume({ runId: state.selectedRunId })); paint(); }
+    try { liveProgress = null; await completeRunResult(await runController.resume({ runId: state.selectedRunId })); paint(); }
     catch (error) { notice = { kind: "error", message: error.message }; paint(); }
   });
   const updateMatchup = async color => {
@@ -249,7 +268,9 @@ function paint() {
     event.preventDefault();
     try {
       const data = new FormData(event.currentTarget);
-      const run = await createLabRun({ runRepository: repositories.runs, runId: data.get("runId"), title: data.get("title") });
+      const runId = data.get("runId");
+      const baseline = await loadCanonicalR29(runId);
+      const run = await createLabRun({ database, baseline, runRepository: repositories.runs, runId, title: data.get("title") });
       await refresh(run.runId); settings = await persistLabSelection(repositories.settings, state, settings);
       notice = { kind: "success", message: `Created ${run.title}.` }; newDialog.close(); paint();
     } catch (error) { notice = { kind: "error", message: error.message }; newDialog.close(); paint(); }
@@ -354,6 +375,16 @@ async function bootstrap() {
     const runService = new BrowserRunService({
       database,
       progressRepository: repositories.progress,
+      onCheckpoint: checkpoint => {
+        const phaseChanged = progress?.phase !== checkpoint.phase;
+        progress = checkpoint;
+        if (phaseChanged) paint(); else updateProgressElements();
+      },
+      onLiveProgress: update => {
+        liveProgress = update;
+        const current = Date.now();
+        if (current - lastLiveRender >= 250) { lastLiveRender = current; updateProgressElements(); }
+      },
       prepareGeneration: productionContext,
       restoreGeneration: async checkpoint => {
         const review = settings?.controlReview;
