@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { createScheduledGame } from "../../src/evolution/schedule.js";
 import {
+  createGenerationInitialization,
   createGameRequest,
+  createInitializedGameRequest,
+  handleInitializedGameRequest,
   handleGameRequest,
   validateGameRequest,
   validateGameResult,
@@ -32,4 +35,43 @@ test("single-game handler returns a canonical, request-correlated ledger result"
   assert.equal(typeof result.ledgerRow.redP, "number");
   assert.equal(validateGameResult(result, request), result);
   assert.throws(() => validateGameResult({ ...result, jobId: "wrong" }, request), /does not match/);
+});
+
+test("initialized worker jobs contain IDs only and resolve immutable generation genomes", () => {
+  const context = {};
+  const initialization = createGenerationInitialization({ genomes: [redGenome, blueGenome], engineOptions: { depth: 1 } });
+  handleInitializedGameRequest(initialization, context);
+  const request = createInitializedGameRequest({ jobId: "initialized-7", game });
+  assert.equal(request.redGenome, undefined);
+  assert.equal(request.blueGenome, undefined);
+  const calls = [];
+  const result = handleInitializedGameRequest(request, context, (red, blue, options) => {
+    calls.push([red.id, blue.id, options.depth]);
+    return { ledger: { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+      trained: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, pokes: { R: 0, B: 0 },
+      killsByAttacker: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } },
+      victimsByType: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, engineRulesVersion: "reach-v1" } };
+  });
+  assert.deepEqual(calls, [[redGenome.id, blueGenome.id, 1]]);
+  assert.equal(validateGameResult(result, request), result);
+  assert.throws(() => handleInitializedGameRequest(createInitializedGameRequest({
+    jobId: "unknown", game: { ...game, redId: "missing" }
+  }), context), /Unknown initialized genome/);
+});
+
+test("the first observed initialized fight returns readable move descriptions outside its ledger", () => {
+  const context = {};
+  handleInitializedGameRequest(createGenerationInitialization({ genomes: [redGenome, blueGenome],
+    engineOptions: { depth: 1 } }), context);
+  const request = createInitializedGameRequest({ jobId: "observed", game, captureActivity: true });
+  const result = handleInitializedGameRequest(request, context, () => ({
+    ledger: { outcome: "draw", winner: "", round: 20, redScore: 0, blueScore: 0,
+      trained: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, pokes: { R: 0, B: 0 },
+      killsByAttacker: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } },
+      victimsByType: { R: { P: 0, A: 0, C: 0 }, B: { P: 0, A: 0, C: 0 } }, engineRulesVersion: "reach-v1" },
+    replay: { actions: [{ kind: "move", unitId: 2, destination: [-3, 0] },
+      { kind: "hold", unitId: 1 }] }
+  }));
+  assert.deepEqual(result.activity, ["Unit 2 moved to (-3, 0)", "Unit 1 held position"]);
+  assert.equal(result.ledgerRow.activity, undefined);
 });

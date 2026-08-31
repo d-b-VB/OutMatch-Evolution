@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { processWorkerMessage } from "../../src/evolution/game-worker.js";
 import { createScheduledGame } from "../../src/evolution/schedule.js";
-import { createGameRequest, WORKER_PROTOCOL_VERSION } from "../../src/evolution/worker-protocol.js";
-import { runWorkerSchedule } from "../../src/evolution/worker-pool.js";
+import { createGameRequest, handleGameRequest, handleInitializedGameRequest, WORKER_PROTOCOL_VERSION } from "../../src/evolution/worker-protocol.js";
+import { ReusableWorkerPoolSession, runWorkerSchedule } from "../../src/evolution/worker-pool.js";
 
 const genomes = new Map(["a", "b", "c"].map(id => [id, { id, genes: {} }]));
 const schedule = [
@@ -46,6 +47,32 @@ class FakeWorker {
   terminate() { this.terminated = true; }
 }
 
+class InitializedFakeWorker extends FakeWorker {
+  constructor() { super(); this.messages = []; }
+  postMessage(request) {
+    this.messages.push(request);
+    queueMicrotask(() => {
+      const data = request.type === "initialize_generation"
+        ? { protocol: WORKER_PROTOCOL_VERSION, type: "generation_initialized", genomeCount: request.genomes.length }
+        : resultFor(request);
+      for (const listener of this.listeners.message) listener({ data });
+    });
+  }
+}
+
+class ProtocolWorker extends FakeWorker {
+  constructor() { super(); this.context = {}; }
+  postMessage(request) {
+    queueMicrotask(() => {
+      let data;
+      try { data = handleInitializedGameRequest(request, this.context); }
+      catch (error) { data = { protocol: WORKER_PROTOCOL_VERSION, type: "game_error", jobId: request.jobId,
+        error: { name: error.name, message: error.message } }; }
+      for (const listener of this.listeners.message) listener({ data });
+    });
+  }
+}
+
 test("Worker entry point posts successful results and structured failures", () => {
   const request = createGameRequest({ jobId: "job", game: schedule[0], redGenome: genomes.get("a"), blueGenome: genomes.get("b"), engineOptions: { depth: 1 } });
   const messages = [];
@@ -73,6 +100,7 @@ test("bounded pool restores schedule order and reports progress despite out-of-o
   assert.deepEqual(rows.map(row => row.scheduleIndex), [0, 1, 2]);
   assert.deepEqual(progress.map(event => event.completed), [1, 2, 3]);
   assert.ok(progress.every(event => event.total === 3 && event.stage === "stage1_core"));
+  assert.ok(progress.every(event => Number.isSafeInteger(event.scheduleIndex) && event.redId && event.blueId));
   assert.ok(workers.every(worker => worker.terminated));
 });
 
@@ -90,6 +118,46 @@ test("pool propagates correlated Worker failures and terminates every Worker", a
     }
   }), /schedule index 0.*GameError: boom/);
   assert.ok(workers.every(worker => worker.terminated));
+});
+
+test("reusable pool initializes genomes once and reuses workers and exact combat results", async () => {
+  const workers = [];
+  const activity = [];
+  const session = new ReusableWorkerPoolSession({
+    genomes, workerCount: 2, engineOptions: { depth: 1 },
+    createWorker: () => { const worker = new InitializedFakeWorker(); workers.push(worker); return worker; },
+    onActivity: event => activity.push(event)
+  });
+  const first = await session.run(schedule.slice(0, 2));
+  const repeated = await session.run(schedule.slice(0, 2));
+  assert.deepEqual(repeated, first);
+  assert.equal(workers.length, 2);
+  assert.ok(workers.every(worker => worker.messages.filter(message => message.type === "initialize_generation").length === 1));
+  assert.ok(workers.every(worker => worker.messages.filter(message => message.type === "run_initialized_game")
+    .every(message => message.redGenome === undefined && message.blueGenome === undefined)));
+  assert.equal(session.stats.workerPoolStartups, 1);
+  assert.equal(session.stats.newlySimulatedGames, 2);
+  assert.equal(session.stats.cacheHits, 2);
+  assert.equal(workers.flatMap(worker => worker.messages).filter(message => message.captureActivity).length, 1);
+  assert.equal(activity.filter(event => event.status === "started").length, 2);
+  assert.equal(activity.filter(event => event.status === "completed").length, 2);
+  session.close();
+  assert.ok(workers.every(worker => worker.terminated));
+});
+
+test("initialized optimized execution is byte-for-byte equal to legacy serial combat", async () => {
+  const checkpoint = JSON.parse(readFileSync("seed/r29/Reach_R29_Complete_Checkpoint.json", "utf8"));
+  const pair = checkpoint.population.slice(0, 2);
+  const indexed = new Map(pair.map(genome => [genome.id, genome]));
+  const canonicalGame = createScheduledGame({ stage: "stage1_core", scheduleIndex: 0,
+    redId: pair[0].id, blueId: pair[1].id });
+  const legacy = handleGameRequest(createGameRequest({ jobId: "legacy", game: canonicalGame,
+    redGenome: pair[0], blueGenome: pair[1], engineOptions: { depth: 1 } })).ledgerRow;
+  const session = new ReusableWorkerPoolSession({ genomes: indexed, workerCount: 1,
+    engineOptions: { depth: 1 }, createWorker: () => new ProtocolWorker() });
+  assert.deepEqual((await session.run([canonicalGame]))[0], legacy);
+  assert.deepEqual((await session.run([canonicalGame]))[0], legacy);
+  session.close();
 });
 
 test("Worker counts 1, 2, and 4 produce byte-equivalent ordered ledgers", async () => {
