@@ -25,14 +25,27 @@ export function buildScreeningSchedule(groups, startIndex = 0) {
   return schedule;
 }
 
-/** Complete the 161-person two-color elite round robin, skipping every colored game already in the ledger. */
-export function buildEliteSchedule(eliteIds, priorRows, startIndex = 0) {
+function requiresOrientation(redId, blueId, rubricById) {
+  const redRubric = rubricById?.get(redId) ?? "generalist";
+  const blueRubric = rubricById?.get(blueId) ?? "generalist";
+  const redNeeds = redRubric !== "blue";
+  const blueNeeds = blueRubric !== "red";
+  return redNeeds || blueNeeds;
+}
+
+/**
+ * Complete the elite testing network, skipping colored games already played. Red-only and
+ * Blue-only specialists request only their useful color. Other rubrics require both colors.
+ * A game is scheduled whenever either contestant needs that orientation.
+ */
+export function buildEliteSchedule(eliteIds, priorRows, startIndex = 0, rubricById = null) {
   const done = completedKeys(priorRows);
   const schedule = [];
   let scheduleIndex = startIndex;
   for (let first = 0; first < eliteIds.length; first += 1) {
     for (let second = first + 1; second < eliteIds.length; second += 1) {
       for (const [redId, blueId] of [[eliteIds[first], eliteIds[second]], [eliteIds[second], eliteIds[first]]]) {
+        if (!requiresOrientation(redId, blueId, rubricById)) continue;
         if (done.has(coloredGameKey(redId, blueId))) continue;
         schedule.push({ redId, blueId, stage: "elite", scheduleIndex: scheduleIndex++ });
       }
@@ -41,10 +54,7 @@ export function buildEliteSchedule(eliteIds, priorRows, startIndex = 0) {
   return schedule;
 }
 
-/**
- * Build missing games for rubric-specific testing.  Red and Blue candidates only play
- * the indicated color unless some other rubric independently requires the reciprocal.
- */
+/** Build missing rubric-specific games. Color specialists play only the indicated color. */
 export function buildCandidateTestingSchedule({
   requests,
   populationIds,
@@ -92,10 +102,7 @@ export function buildInitialRampageRequests(rankings) {
   return requests;
 }
 
-/**
- * An uncertified contestant may look good enough to enter a reward range, but that
- * provisional rank only earns further games.  Returns the next rubric-specific auditions.
- */
+/** Provisional reward rank earns further games, never the reward itself. */
 export function findRewardCertificationRequests(rankings, report, isCertified, {
   generalistSurvivors = 14,
   specialistSurvivors = 4
@@ -119,7 +126,6 @@ export function findRewardCertificationRequests(rankings, report, isCertified, {
   return requests;
 }
 
-/** Rank-map helper used after every added testing tranche. */
 export function buildRankingMap(report, rankRubric) {
   return Object.fromEntries(RUBRICS.map(rubric => [rubric, rankRubric(report, rubric)]));
 }
